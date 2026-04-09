@@ -1,2 +1,49 @@
-// storage.js
-const x=1;
+// js/storage.js
+
+const STORAGE_KEY = 'thestage_v1';
+const RELAY_URL   = 'https://script.google.com/macros/s/AKfycby0-GHkWJiJts2bPRdOqp5H-ozrSMumOFy6dpLnS-aABvC5HSud1iG7OERE3_FVR-8i/exec';
+
+const Storage = {
+
+  load() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return { team: [], chatHistory: {} };
+      return JSON.parse(raw);
+    } catch(e) { return { team: [], chatHistory: {} }; }
+  },
+
+  save(state) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+  },
+
+  async cloudSave(state) {
+    this.save(state);
+    try {
+      await fetch(RELAY_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action: 'save', state: state })
+      });
+    } catch(e) { console.warn('cloud save failed', e); }
+  },
+
+  async cloudLoad() {
+    try {
+      var resp  = await fetch(RELAY_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action: 'load' })
+      });
+      var data = await resp.json();
+      if (data.ok && data.state) {
+        this.save(data.state);
+        return data.state;
+      }
+      return this.load();
+    } catch(e) {
+      console.warn('cloud load failed, using local', e);
+      return this.load();
+    }
+  }
+};
