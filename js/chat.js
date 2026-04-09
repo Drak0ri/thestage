@@ -28,7 +28,7 @@ const Chat = {
     ctx.clearRect(0, 0, av.width, av.height);
     const pal = PALETTES[member.colorIdx % PALETTES.length];
     ctx.save();
-    ctx.scale(2.25, 2.25);
+    ctx.scale(0.75, 0.75);
     drawPixelChar(ctx, pal, 0);
     ctx.restore();
 
@@ -107,7 +107,7 @@ const Chat = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-sonnet-4-6',
           max_tokens: 1000,
           system,
           messages
