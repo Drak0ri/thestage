@@ -1,1 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Stage — IESV Team World</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
 
+    <!-- HEADER -->
+    <header id="site-header">
+      <div id="header-left">
+        <span id="logo">🎭 THE STAGE</span>
+        <span id="subtitle">IESV Team World</span>
+      </div>
+      <div id="header-right">
+        <button class="px-btn" id="btn-meeting">⚑ MEETING</button>
+        <button class="px-btn" id="btn-add">＋ ADD</button>
+        <button class="px-btn" id="btn-dismiss" style="display:none">✕ DISMISS</button>
+      </div>
+    </header>
+
+    <!-- WORLD -->
+    <div id="world-container">
+      <div id="stars-layer"></div>
+      <canvas id="bg-canvas"></canvas>
+      <div id="chars-layer"></div>
+      <div id="world-hud">
+        <span id="status-bar">click a character to chat</span>
+      </div>
+    </div>
+
+    <!-- CHAT PANEL -->
+    <div id="chat-panel">
+      <div id="chat-header">
+        <canvas id="chat-avatar" width="36" height="54"></canvas>
+        <div id="chat-meta">
+          <div id="chat-name">—</div>
+          <div id="chat-role">—</div>
+        </div>
+        <button class="px-btn danger" id="chat-close">✕</button>
+      </div>
+      <div id="chat-messages"></div>
+      <div id="chat-input-row">
+        <input id="chat-input" type="text" placeholder="say something..." maxlength="300" autocomplete="off">
+        <button class="px-btn accent" id="chat-send">▶ SEND</button>
+      </div>
+    </div>
+
+  </div><!-- #app -->
+
+  <!-- ADD MODAL -->
+  <div id="add-modal" class="modal-overlay">
+    <div class="modal-box">
+      <h3>ADD TEAM MEMBER</h3>
+      <label>Name</label>
+      <input id="new-name" type="text" placeholder="e.g. Sarah" maxlength="24" autocomplete="off">
+      <label>Role <span style="opacity:0.5">(optional)</span></label>
+      <input id="new-role" type="text" placeholder="e.g. Teacher, Admin..." maxlength="40" autocomplete="off">
+      <div class="modal-btns">
+        <button class="px-btn" id="add-cancel">CANCEL</button>
+        <button class="px-btn accent" id="add-confirm">ADD ▶</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/chars.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/chat.js"></script>
+  <script src="js/world.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
