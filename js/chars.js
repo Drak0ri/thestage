@@ -1,4 +1,4 @@
-// js/chars.js — 48×72 pixel art character renderer
+// js/chars.js — 48x72 pixel art character renderer + action animations
 
 const PALETTES = [
   { skin:'#f5c5a3', skinS:'#d4956a', hair:'#3d2b1f', hairH:'#6b4c38', shirt:'#e74c3c', shirtS:'#c0392b', pants:'#2c3e50', pantsS:'#1a252f', shoes:'#1a1a1a', belt:'#333', eyes:'#2c1810', mouth:'#c07060' },
@@ -30,173 +30,267 @@ const PERSONALITIES = [
   'chaotically brilliant, idea machine, needs someone to help land the plane',
 ];
 
+// Available actions — add new ones here and the AI will start using them
+const ACTIONS = ['nod','shake','shrug','jump','wave','spin','think','facepalm','point','bow','dance','stomp'];
+
 /**
- * Draw a 48×72 pixel character.
- * frame: 0=stand, 1=walkA, 2=walkB, 3=forward (coming toward camera — slightly wider/taller pose)
+ * Draw a 48x72 pixel character.
+ * pose: 0=stand, 1=walkA, 2=walkB, 3=forward-lean
+ * Special poses via action system handle their own offsets externally
  */
-function drawPixelChar(ctx, p, frame) {
+function drawPixelChar(ctx, p, frame, opts) {
   frame = frame || 0;
+  opts  = opts  || {};
   ctx.clearRect(0, 0, 48, 72);
 
-  const px = (x, y, c, w, h) => {
-    if (x < 0 || y < 0) return;
+  var offsetY = opts.offsetY || 0;   // vertical shift (jump, bob)
+  var scaleX  = opts.scaleX  || 1;   // flip for direction
+  var headTilt = opts.headTilt || 0; // degrees
+
+  if (scaleX === -1) {
+    ctx.save();
+    ctx.translate(48, 0);
+    ctx.scale(-1, 1);
+  }
+
+  var px = function(x, y, c, w, h) {
+    if (y + offsetY < 0) return;
     ctx.fillStyle = c;
-    ctx.fillRect(x, y, w || 1, h || 1);
+    ctx.fillRect(x, y + offsetY, w||1, h||1);
   };
 
-  const isFwd = frame === 3;
-  const swA   = frame === 1 ? 2 : frame === 2 ? -2 : isFwd ? -1 : 0;
-  const swB   = -swA;
+  var isFwd = frame === 3;
+  var swA   = frame===1?2:frame===2?-2:isFwd?-1:0;
+  var swB   = -swA;
 
-  // ── HEAD ─────────────────────────────────────────────────────────
-  const hx = isFwd ? 15 : 17;
-  const hy = isFwd ? 1  : 3;
-  const hw = isFwd ? 18 : 14;
-  const hh = isFwd ? 20 : 16;
+  var hx=isFwd?15:17, hy=isFwd?1:3, hw=isFwd?18:14, hh=isFwd?20:16;
 
-  px(hx,      hy,      p.skin,  hw,   hh);
-  px(hx,      hy,      p.skinS, 1,    hh);     // left shadow
-  px(hx+hw-1, hy,      p.skinS, 1,    hh);     // right shadow
-  px(hx,      hy+hh-2, p.skinS, hw,   2);      // chin shadow
+  // Head (with optional tilt stored as ctx rotate)
+  if (headTilt) { ctx.save(); ctx.translate(hx+hw/2, hy+hh/2); ctx.rotate(headTilt*Math.PI/180); ctx.translate(-(hx+hw/2),-(hy+hh/2)); }
 
-  // hair top
-  px(hx,   hy,   p.hair,  hw, 5);
-  // hair sides
-  px(hx,   hy+5, p.hair,  2,  7);
-  px(hx+hw-2, hy+5, p.hair, 2, 7);
-  // hair highlight streak
-  px(hx+4, hy+1, p.hairH, 5, 1);
-  px(hx+3, hy+2, p.hairH, 3, 1);
+  px(hx,hy,p.skin,hw,hh);
+  px(hx,hy,p.skinS,1,hh); px(hx+hw-1,hy,p.skinS,1,hh); px(hx,hy+hh-2,p.skinS,hw,2);
+  px(hx,hy,p.hair,hw,5); px(hx,hy+5,p.hair,2,7); px(hx+hw-2,hy+5,p.hair,2,7);
+  px(hx+4,hy+1,p.hairH,5,1); px(hx+3,hy+2,p.hairH,3,1);
 
-  // eyes
-  const ey = hy + 8;
-  const ex1 = hx + (isFwd ? 3 : 2);
-  const ex2 = hx + hw - (isFwd ? 6 : 5);
-  px(ex1,   ey,   '#fff', 3, 3);
-  px(ex2,   ey,   '#fff', 3, 3);
-  px(ex1+1, ey+1, p.eyes);                     // pupils
-  px(ex2+1, ey+1, p.eyes);
-  px(ex1,   ey-2, p.hair,  3, 1);              // eyebrows
-  px(ex2,   ey-2, p.hair,  3, 1);
-
-  // nose
-  const nx = hx + Math.floor(hw/2) - 1;
-  px(nx, ey+4, p.skinS, 2, 2);
-
-  // mouth
-  const my = hy + hh - 5;
-  px(hx+4,    my,   p.mouth, hw-8, 1);
-  px(hx+3,    my-1, p.mouth, 1, 1);
-  px(hx+hw-4, my-1, p.mouth, 1, 1);
-
-  // ears
-  px(hx-1,   ey,   p.skin,  1, 4);
-  px(hx+hw,  ey,   p.skin,  1, 4);
-  px(hx-1,   ey+1, p.skinS, 1, 1);
-  px(hx+hw,  ey+1, p.skinS, 1, 1);
-
-  // ── NECK ─────────────────────────────────────────────────────────
-  const ny2 = hy + hh;
-  const nkx = hx + Math.floor(hw/2) - 3;
-  px(nkx,   ny2, p.skin,  6, 4);
-  px(nkx,   ny2, p.skinS, 1, 4);
-  px(nkx+5, ny2, p.skinS, 1, 4);
-
-  // ── TORSO ────────────────────────────────────────────────────────
-  const bx = isFwd ? 12 : 14;
-  const by = ny2 + 4;
-  const bw = isFwd ? 24 : 20;
-  const bh = 20;
-
-  px(bx,      by, p.shirt,  bw, bh);
-  px(bx,      by, p.shirtS, 1,  bh);
-  px(bx+bw-1, by, p.shirtS, 1,  bh);
-  px(bx,      by+bh-1, p.shirtS, bw, 1);
-
-  // collar
-  const cx2 = hx + Math.floor(hw/2);
-  px(cx2-3, by,   p.skinS, 6, 2);
-  px(cx2-2, by+2, p.skinS, 4, 2);
-  px(cx2-1, by+4, p.skinS, 2, 1);
-
-  // pocket
-  px(bx+3, by+6, p.shirtS, 6, 5);
-  px(bx+4, by+7, p.shirt,  4, 3);
-
-  // button line
-  for (let i = 0; i < 4; i++) px(bx + Math.floor(bw/2), by+4 + i*4, p.shirtS, 1, 2);
-
-  // ── BELT ─────────────────────────────────────────────────────────
-  const bely = by + bh;
-  px(bx,                   bely, p.belt, bw, 4);
-  px(bx + Math.floor(bw/2) - 3, bely, '#888', 6, 4); // buckle
-
-  // ── ARMS ─────────────────────────────────────────────────────────
-  const aH = 18;
-  // left
-  px(bx-5, by + swA, p.shirt,  5, aH);
-  px(bx-5, by + swA, p.shirtS, 1, aH);
-  // left hand
-  px(bx-5, by + aH + swA, p.skin, 5, 5);
-  px(bx-5, by + aH + swA, p.skinS, 1, 5);
-
-  // right
-  px(bx+bw, by + swB, p.shirt,  5, aH);
-  px(bx+bw+4, by + swB, p.shirtS, 1, aH);
-  // right hand
-  px(bx+bw, by + aH + swB, p.skin, 5, 5);
-  px(bx+bw+4, by + aH + swB, p.skinS, 1, 5);
-
-  // ── LEGS ─────────────────────────────────────────────────────────
-  const lY  = bely + 4;
-  const lH  = 18;
-  const lW  = 8;
-  const llx = bx + 1;
-  const lrx = bx + bw - lW - 1;
-
-  for (let i = 0; i < lH; i++) {
-    const off = i > lH / 2 ? (frame === 1 ? swA : frame === 2 ? swA : isFwd ? swA : 0) : 0;
-    px(llx + off, lY + i, p.pants,  lW, 1);
-    px(llx + off, lY + i, p.pantsS, 1,  1);
+  var ey=hy+8, ex1=hx+(isFwd?3:2), ex2=hx+hw-(isFwd?6:5);
+  if (opts.eyesClosed) {
+    px(ex1,ey+1,p.hair,3,1); px(ex2,ey+1,p.hair,3,1);
+  } else {
+    px(ex1,ey,'#fff',3,3); px(ex2,ey,'#fff',3,3);
+    px(ex1+1,ey+1,p.eyes); px(ex2+1,ey+1,p.eyes);
   }
-  for (let i = 0; i < lH; i++) {
-    const off = i > lH / 2 ? (frame === 1 ? swB : frame === 2 ? swB : isFwd ? swB : 0) : 0;
-    px(lrx + off,      lY + i, p.pants,  lW, 1);
-    px(lrx + off+lW-1, lY + i, p.pantsS, 1,  1);
+  px(ex1,ey-2,p.hair,3,1); px(ex2,ey-2,p.hair,3,1);
+  px(hx+Math.floor(hw/2)-1,ey+4,p.skinS,2,2);
+
+  var my=hy+hh-5;
+  if (opts.smileWide) {
+    px(hx+3,my,p.mouth,hw-6,1); px(hx+2,my-1,p.mouth,1,1); px(hx+hw-3,my-1,p.mouth,1,1);
+    px(hx+2,my+1,p.mouth,1,1); px(hx+hw-3,my+1,p.mouth,1,1);
+  } else if (opts.mouthO) {
+    px(hx+5,my,p.mouth,hw-10,2); px(hx+4,my-1,p.mouth,1,1); px(hx+hw-5,my-1,p.mouth,1,1);
+  } else {
+    px(hx+4,my,p.mouth,hw-8,1); px(hx+3,my-1,p.mouth,1,1); px(hx+hw-4,my-1,p.mouth,1,1);
+  }
+  px(hx-1,ey,p.skin,1,4); px(hx+hw,ey,p.skin,1,4);
+
+  if (headTilt) ctx.restore();
+
+  var ny2=hy+hh, nkx=hx+Math.floor(hw/2)-3;
+  px(nkx,ny2,p.skin,6,4); px(nkx,ny2,p.skinS,1,4); px(nkx+5,ny2,p.skinS,1,4);
+
+  var bx=isFwd?12:14, by=ny2+4, bw=isFwd?24:20, bh=20;
+  px(bx,by,p.shirt,bw,bh); px(bx,by,p.shirtS,1,bh); px(bx+bw-1,by,p.shirtS,1,bh); px(bx,by+bh-1,p.shirtS,bw,1);
+  var cx2=hx+Math.floor(hw/2);
+  px(cx2-3,by,p.skinS,6,2); px(cx2-2,by+2,p.skinS,4,2); px(cx2-1,by+4,p.skinS,2,1);
+  px(bx+3,by+6,p.shirtS,6,5); px(bx+4,by+7,p.shirt,4,3);
+  for (var i=0;i<4;i++) px(bx+Math.floor(bw/2),by+4+i*4,p.shirtS,1,2);
+
+  var bely=by+bh;
+  px(bx,bely,p.belt,bw,4); px(bx+Math.floor(bw/2)-3,bely,'#888',6,4);
+
+  // Arms — support raised arm pose
+  var aH=18;
+  var leftSwing  = opts.leftArmUp  ? -10 : swA;
+  var rightSwing = opts.rightArmUp ? -10 : swB;
+  px(bx-5,by+leftSwing,p.shirt,5,aH); px(bx-5,by+leftSwing,p.shirtS,1,aH);
+  px(bx-5,by+aH+leftSwing,p.skin,5,5); px(bx-5,by+aH+leftSwing,p.skinS,1,5);
+  px(bx+bw,by+rightSwing,p.shirt,5,aH); px(bx+bw+4,by+rightSwing,p.shirtS,1,aH);
+  px(bx+bw,by+aH+rightSwing,p.skin,5,5); px(bx+bw+4,by+aH+rightSwing,p.skinS,1,5);
+
+  // Hand on chin for 'think'
+  if (opts.thinkPose) {
+    px(nkx+2,ny2+2,p.skin,4,3);
   }
 
-  // ── SHOES ────────────────────────────────────────────────────────
-  const sY   = lY + lH;
-  const offL = frame === 1 ? swA : frame === 2 ? swA : isFwd ? -1 : 0;
-  const offR = frame === 1 ? swB : frame === 2 ? swB : isFwd ?  1 : 0;
-  px(llx + offL - 1, sY, p.shoes, lW + 3, 5);
-  px(lrx + offR - 1, sY, p.shoes, lW + 3, 5);
-  px(llx + offL,     sY+4, '#555', lW+1, 1);
-  px(lrx + offR,     sY+4, '#555', lW+1, 1);
+  var lY=bely+4, lH=18, lW=8, llx=bx+1, lrx=bx+bw-lW-1;
+  for (var li=0;li<lH;li++) {
+    var offL=li>lH/2?(frame===1?swA:frame===2?swA:isFwd?swA:0):0;
+    var offR=li>lH/2?(frame===1?swB:frame===2?swB:isFwd?swB:0):0;
+    px(llx+offL,lY+li,p.pants,lW,1); px(llx+offL,lY+li,p.pantsS,1,1);
+    px(lrx+offR,lY+li,p.pants,lW,1); px(lrx+offR+lW-1,lY+li,p.pantsS,1,1);
+  }
+  var sY=lY+lH;
+  var oL=frame===1?swA:frame===2?swA:isFwd?-1:0;
+  var oR=frame===1?swB:frame===2?swB:isFwd?1:0;
+  px(llx+oL-1,sY,p.shoes,lW+3,5); px(lrx+oR-1,sY,p.shoes,lW+3,5);
+  px(llx+oL,sY+4,'#555',lW+1,1); px(lrx+oR,sY+4,'#555',lW+1,1);
+
+  if (scaleX === -1) ctx.restore();
+}
+
+function makeCharCanvas(pal, scale) {
+  scale = scale || 2;
+  var c = document.createElement('canvas');
+  c.width = 48*scale; c.height = 72*scale;
+  c.style.imageRendering = 'pixelated';
+  c.style.width  = (48*scale)+'px';
+  c.style.height = (72*scale)+'px';
+  var ctx = c.getContext('2d');
+  ctx.scale(scale,scale);
+  drawPixelChar(ctx, pal, 0);
+  return { canvas:c, ctx:ctx, scale:scale, pal:pal };
+}
+
+function redrawChar(canvas, pal, frame, scale, opts) {
+  var ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.save(); ctx.scale(scale,scale);
+  drawPixelChar(ctx, pal, frame, opts);
+  ctx.restore();
 }
 
 /**
- * Create a scaled canvas element for a character.
+ * Play an action animation on a canvas element.
+ * Returns a promise that resolves when done.
  */
-function makeCharCanvas(pal, scale) {
-  scale = scale || 2;
-  const c   = document.createElement('canvas');
-  c.width   = 48 * scale;
-  c.height  = 72 * scale;
-  c.style.imageRendering = 'pixelated';
-  c.style.width  = (48 * scale) + 'px';
-  c.style.height = (72 * scale) + 'px';
-  const ctx = c.getContext('2d');
-  ctx.scale(scale, scale);
-  drawPixelChar(ctx, pal, 0);
-  return { canvas: c, ctx, scale, pal };
+function playAction(canvas, pal, scale, actionName) {
+  return new Promise(function(resolve) {
+    var ctx  = canvas.getContext('2d');
+    var step = 0;
+    var frames = _actionFrames(actionName);
+    if (!frames || !frames.length) { resolve(); return; }
+
+    var timer = setInterval(function() {
+      if (step >= frames.length) {
+        clearInterval(timer);
+        // Return to stand
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        ctx.save(); ctx.scale(scale,scale);
+        drawPixelChar(ctx, pal, 0);
+        ctx.restore();
+        resolve();
+        return;
+      }
+      var f = frames[step];
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.save(); ctx.scale(scale,scale);
+      drawPixelChar(ctx, pal, f.pose||0, f.opts||{});
+      ctx.restore();
+      step++;
+    }, frames[0].duration || 80);
+  });
 }
 
-function redrawChar(canvas, pal, frame, scale) {
-  const ctx = canvas.getContext('2d');
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.save();
-  ctx.scale(scale, scale);
-  drawPixelChar(ctx, pal, frame);
-  ctx.restore();
+function _actionFrames(action) {
+  var D = 80; // default frame duration ms
+  switch(action) {
+    case 'nod':
+      return [
+        {pose:0,opts:{headTilt:-8},duration:100},
+        {pose:0,opts:{headTilt:8},duration:100},
+        {pose:0,opts:{headTilt:-5},duration:100},
+        {pose:0,opts:{},duration:100},
+      ];
+    case 'shake':
+      return [
+        {pose:0,opts:{scaleX:-1},duration:80},
+        {pose:0,opts:{},duration:80},
+        {pose:0,opts:{scaleX:-1},duration:80},
+        {pose:0,opts:{},duration:80},
+        {pose:0,opts:{scaleX:-1},duration:80},
+        {pose:0,opts:{},duration:80},
+      ];
+    case 'shrug':
+      return [
+        {pose:0,opts:{leftArmUp:true,rightArmUp:true},duration:150},
+        {pose:0,opts:{leftArmUp:true,rightArmUp:true,headTilt:5},duration:150},
+        {pose:0,opts:{leftArmUp:true,rightArmUp:true},duration:150},
+        {pose:0,opts:{},duration:100},
+      ];
+    case 'jump':
+      return [
+        {pose:0,opts:{offsetY:2},duration:60},
+        {pose:0,opts:{offsetY:-10},duration:80},
+        {pose:0,opts:{offsetY:-16},duration:80},
+        {pose:0,opts:{offsetY:-10},duration:80},
+        {pose:0,opts:{offsetY:-4},duration:60},
+        {pose:0,opts:{offsetY:0},duration:60},
+      ];
+    case 'wave':
+      return [
+        {pose:0,opts:{rightArmUp:true},duration:120},
+        {pose:0,opts:{rightArmUp:false},duration:100},
+        {pose:0,opts:{rightArmUp:true},duration:120},
+        {pose:0,opts:{rightArmUp:false},duration:100},
+        {pose:0,opts:{rightArmUp:true},duration:120},
+        {pose:0,opts:{},duration:100},
+      ];
+    case 'spin':
+      return [
+        {pose:0,opts:{scaleX:1},duration:80},
+        {pose:0,opts:{scaleX:-1},duration:80},
+        {pose:0,opts:{scaleX:1},duration:80},
+        {pose:0,opts:{scaleX:-1},duration:80},
+        {pose:0,opts:{scaleX:1},duration:80},
+      ];
+    case 'think':
+      return [
+        {pose:0,opts:{thinkPose:true,headTilt:-5},duration:200},
+        {pose:0,opts:{thinkPose:true,headTilt:5},duration:200},
+        {pose:0,opts:{thinkPose:true,headTilt:-3},duration:200},
+        {pose:0,opts:{},duration:100},
+      ];
+    case 'facepalm':
+      return [
+        {pose:0,opts:{leftArmUp:true,headTilt:5},duration:150},
+        {pose:0,opts:{leftArmUp:true,headTilt:8,eyesClosed:true},duration:200},
+        {pose:0,opts:{leftArmUp:true,headTilt:5,eyesClosed:true},duration:150},
+        {pose:0,opts:{},duration:100},
+      ];
+    case 'point':
+      return [
+        {pose:0,opts:{rightArmUp:true},duration:100},
+        {pose:0,opts:{rightArmUp:true,headTilt:-3},duration:300},
+        {pose:0,opts:{rightArmUp:true},duration:100},
+        {pose:0,opts:{},duration:100},
+      ];
+    case 'bow':
+      return [
+        {pose:0,opts:{offsetY:4,headTilt:20},duration:150},
+        {pose:0,opts:{offsetY:6,headTilt:25},duration:200},
+        {pose:0,opts:{offsetY:4,headTilt:20},duration:150},
+        {pose:0,opts:{},duration:100},
+      ];
+    case 'dance':
+      return [
+        {pose:1,opts:{offsetY:-4,rightArmUp:true},duration:150},
+        {pose:2,opts:{offsetY:0,leftArmUp:true},duration:150},
+        {pose:1,opts:{offsetY:-4,rightArmUp:true},duration:150},
+        {pose:2,opts:{offsetY:0,leftArmUp:true},duration:150},
+        {pose:1,opts:{offsetY:-2,rightArmUp:true,leftArmUp:true},duration:150},
+        {pose:0,opts:{},duration:100},
+      ];
+    case 'stomp':
+      return [
+        {pose:1,opts:{offsetY:2},duration:100},
+        {pose:0,opts:{offsetY:0},duration:80},
+        {pose:2,opts:{offsetY:2},duration:100},
+        {pose:0,opts:{offsetY:0},duration:80},
+        {pose:1,opts:{offsetY:2},duration:100},
+        {pose:0,opts:{},duration:80},
+      ];
+    default:
+      return null;
+  }
 }
