@@ -5,8 +5,8 @@ const App = {
   meetingMode: false,
   inviteList: [], // ids currently "on stage" in meeting mode
 
-  init() {
-    this.state = Storage.load();
+  async init() {
+    this.state = await Storage.cloudLoad();
     World.init();
     Chat.init();
     this._bindToolbar();
@@ -89,7 +89,7 @@ const App = {
     };
 
     this.state.team.push(member);
-    Storage.save(this.state);
+    Storage.cloudSave(this.state);
 
     document.getElementById('add-modal').classList.remove('open');
     document.getElementById('new-name').value = '';
@@ -106,3 +106,4 @@ const App = {
 };
 
 document.addEventListener('DOMContentLoaded', () => App.init());
+
