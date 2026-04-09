@@ -35,6 +35,11 @@ const App = {
   },
 
   _bindToolbar() {
+    // Room buttons
+    document.querySelectorAll('.room-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() { World.switchRoom(btn.dataset.room); });
+    });
+
     document.getElementById('btn-add').addEventListener('click', () => {
       document.getElementById('add-modal').classList.add('open');
       document.getElementById('new-name').focus();
