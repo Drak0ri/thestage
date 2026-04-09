@@ -9,9 +9,9 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+
   <div id="app">
 
-    <!-- HEADER -->
     <header id="site-header">
       <div id="header-left">
         <span id="logo">🎭 THE STAGE</span>
@@ -24,7 +24,6 @@
       </div>
     </header>
 
-    <!-- WORLD -->
     <div id="world-container">
       <div id="stars-layer"></div>
       <canvas id="bg-canvas"></canvas>
@@ -34,7 +33,6 @@
       </div>
     </div>
 
-    <!-- CHAT PANEL -->
     <div id="chat-panel">
       <div id="chat-header">
         <canvas id="chat-avatar" width="36" height="54"></canvas>
@@ -51,9 +49,9 @@
       </div>
     </div>
 
-  </div><!-- #app -->
+  </div>
 
-  <!-- ADD MODAL -->
+  <!-- MODAL lives on body to avoid stacking context / overflow clipping -->
   <div id="add-modal" class="modal-overlay">
     <div class="modal-box">
       <h3>ADD TEAM MEMBER</h3>
