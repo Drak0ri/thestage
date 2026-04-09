@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>The Stage</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
@@ -14,13 +15,13 @@
 
     <header id="site-header">
       <div id="header-left">
-        <span id="logo">🎭 THE STAGE</span>
+        <span id="logo">&#127917; THE STAGE</span>
         <span id="subtitle">your team world</span>
       </div>
       <div id="header-right">
-        <button class="px-btn" id="btn-meeting">⚑ MEETING</button>
-        <button class="px-btn" id="btn-add">＋ ADD</button>
-        <button class="px-btn" id="btn-dismiss" style="display:none">✕ DISMISS</button>
+        <button class="px-btn" id="btn-meeting">&#9873; MEETING</button>
+        <button class="px-btn" id="btn-add">&#65291; ADD</button>
+        <button class="px-btn" id="btn-dismiss" style="display:none">&#10005; DISMISS</button>
       </div>
     </header>
 
@@ -37,31 +38,30 @@
       <div id="chat-header">
         <canvas id="chat-avatar" width="36" height="54"></canvas>
         <div id="chat-meta">
-          <div id="chat-name">—</div>
-          <div id="chat-role">—</div>
+          <div id="chat-name">&#8212;</div>
+          <div id="chat-role">&#8212;</div>
         </div>
-        <button class="px-btn danger" id="chat-close">✕</button>
+        <button class="px-btn danger" id="chat-close">&#10005;</button>
       </div>
       <div id="chat-messages"></div>
       <div id="chat-input-row">
         <input id="chat-input" type="text" placeholder="say something..." maxlength="300" autocomplete="off">
-        <button class="px-btn accent" id="chat-send">▶ SEND</button>
+        <button class="px-btn accent" id="chat-send">&#9654; SEND</button>
       </div>
     </div>
 
   </div>
 
-  <!-- MODAL lives on body to avoid stacking context / overflow clipping -->
   <div id="add-modal" class="modal-overlay">
     <div class="modal-box">
       <h3>ADD TEAM MEMBER</h3>
       <label>Name</label>
       <input id="new-name" type="text" placeholder="e.g. Sarah" maxlength="24" autocomplete="off">
       <label>Role <span style="opacity:0.5">(optional)</span></label>
-      <input id="new-role" type="text" placeholder="e.g. Teacher, Admin..." maxlength="40" autocomplete="off">
+      <input id="new-role" type="text" placeholder="e.g. Admin, Dev..." maxlength="40" autocomplete="off">
       <div class="modal-btns">
         <button class="px-btn" id="add-cancel">CANCEL</button>
-        <button class="px-btn accent" id="add-confirm">ADD ▶</button>
+        <button class="px-btn accent" id="add-confirm">ADD &#9654;</button>
       </div>
     </div>
   </div>
