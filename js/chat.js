@@ -103,9 +103,9 @@ const Chat = {
       .map(m => ({ role: m.role, content: m.content }));
 
     try {
-      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      const resp = await fetch('https://script.google.com/macros/s/AKfycbyCIcXF9m3HbHdWr0OJuwuPyHl9r4JHpcIPOqF7DssjmLIcWKJ_q4dQxY4pfylr7ASe/exec', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({
           model: 'claude-sonnet-4-6',
           max_tokens: 1000,
