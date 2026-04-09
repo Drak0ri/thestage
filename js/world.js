@@ -1,9 +1,9 @@
 // js/world.js
 
-const IDLE_PX    = 1;   // render scale at rest: 48x72 display px
-const ACTIVE_PX  = 1.8; // render scale active: ~86x130 display px
-const RENDER_SCALE = 2; // canvas internal resolution multiplier (for crispness)
-const FLOOR_H    = 58;  // height of floor tile
+const IDLE_PX      = 1;
+const ACTIVE_PX    = 1.8;
+const RENDER_SCALE = 2;
+const FLOOR_H      = 58;
 
 const World = {
   container:   null,
@@ -18,7 +18,6 @@ const World = {
     this._buildStars();
     this._buildBgCanvas();
     window.addEventListener('resize', function() { World.render(); });
-
     this.container.addEventListener('click', function(e) {
       var t = e.target;
       if (t === World.container || t.id === 'bg-canvas' ||
@@ -90,30 +89,6 @@ const World = {
     this.render();
   },
 
-  // Convert a fractional display scale to canvas pixels
-  // We always render internally at RENDER_SCALE for crispness,
-  // then set CSS width/height to the desired display size.
-  _makeChar(pal, displayScale) {
-    var internalW = 48 * RENDER_SCALE;
-    var internalH = 72 * RENDER_SCALE;
-    var displayW  = Math.round(48 * displayScale);
-    var displayH  = Math.round(72 * displayScale);
-
-    var c = document.createElement('canvas');
-    c.width  = internalW;
-    c.height = internalH;
-    c.style.imageRendering = 'pixelated';
-    c.style.width  = displayW + 'px';
-    c.style.height = displayH + 'px';
-    c.style.display = 'block';
-
-    var ctx = c.getContext('2d');
-    ctx.scale(RENDER_SCALE, RENDER_SCALE);
-    drawPixelChar(ctx, pal, 0);
-
-    return { canvas: c, displayW: displayW, displayH: displayH };
-  },
-
   render() {
     this._clearTimers();
     this.charsLayer.innerHTML = '';
@@ -121,49 +96,70 @@ const World = {
     var team = App.state.team;
     if (!team.length) return;
 
-    var W         = this.container.offsetWidth || 700;
-    var H         = this.container.offsetHeight || 320;
-    var activeId  = Chat.currentId;
-    var positions = this._calcPositions(team.length, W, activeId);
+    var W        = this.container.offsetWidth || 700;
+    var activeId = Chat.currentId;
+    var positions = this._calcPositions(team.length, W);
 
     team.forEach(function(member, i) {
-      var isActive    = member.id === activeId;
-      var pal         = PALETTES[member.colorIdx % PALETTES.length];
+      var isActive     = member.id === activeId;
+      var pal          = PALETTES[member.colorIdx % PALETTES.length];
       var displayScale = isActive ? ACTIVE_PX : IDLE_PX;
+      var displayW     = Math.round(48 * displayScale);
+      var displayH     = Math.round(72 * displayScale);
 
-      var built     = World._makeChar(pal, displayScale);
-      var canvas    = built.canvas;
-      var displayW  = built.displayW;
-      var displayH  = built.displayH;
-      canvas.id     = 'canvas-' + member.id;
+      // Canvas: always render at RENDER_SCALE internally, display at displayW/H via CSS
+      var c = document.createElement('canvas');
+      c.width  = 48 * RENDER_SCALE;
+      c.height = 72 * RENDER_SCALE;
+      c.style.imageRendering = 'pixelated';
+      c.style.width   = displayW + 'px';
+      c.style.height  = displayH + 'px';
+      c.style.display = 'block';
+      c.id = 'canvas-' + member.id;
 
+      var ctx = c.getContext('2d');
+      ctx.save();
+      ctx.scale(RENDER_SCALE, RENDER_SCALE);
+      drawPixelChar(ctx, pal, isActive ? 3 : 0);
+      ctx.restore();
+
+      // Wrapper: exactly canvas size, no extra children in flow
       var wrapper = document.createElement('div');
       wrapper.className = 'character' + (isActive ? ' selected' : '');
       wrapper.id        = 'char-' + member.id;
-
-      // Position: left = given position, bottom = floor level so feet touch floor
       wrapper.style.position = 'absolute';
       wrapper.style.left     = positions[i] + 'px';
       wrapper.style.bottom   = FLOOR_H + 'px';
       wrapper.style.width    = displayW + 'px';
-      wrapper.style.height   = displayH + 'px';
+      wrapper.style.height   = displayH + 'px';  // exactly canvas height, nothing else
       wrapper.style.zIndex   = isActive ? '20' : '10';
       wrapper.style.opacity  = (!isActive && activeId) ? '0.4' : '1';
-      wrapper.style.transition = 'opacity 0.3s ease';
-      wrapper.style.overflow = 'visible';
+      wrapper.style.transition = 'opacity 0.3s ease, width 0.3s ease, height 0.3s ease';
+      wrapper.style.overflow = 'visible';         // allow name/bubble outside bounds
+      wrapper.style.cursor   = 'pointer';
 
-      wrapper.appendChild(canvas);
+      wrapper.appendChild(c);
 
+      // Name label: absolutely positioned BELOW the wrapper (negative bottom offset)
       var nameEl = document.createElement('div');
-      nameEl.className   = 'char-name';
+      nameEl.className = 'char-name';
+      nameEl.style.position  = 'absolute';
+      nameEl.style.bottom    = '-14px';
+      nameEl.style.left      = '50%';
+      nameEl.style.transform = 'translateX(-50%)';
+      nameEl.style.fontSize  = isActive ? '7px' : '5px';
+      nameEl.style.color     = isActive ? '#ffcc44' : '#6677aa';
+      nameEl.style.whiteSpace = 'nowrap';
       nameEl.textContent = member.name.split(' ')[0].substring(0, 10);
-      nameEl.style.fontSize = isActive ? '7px' : '5px';
-      nameEl.style.color    = isActive ? '#ffcc44' : '';
       wrapper.appendChild(nameEl);
 
       if (member.bubble) {
         var bub = document.createElement('div');
         bub.className = 'speech-bubble';
+        bub.style.position = 'absolute';
+        bub.style.bottom   = (displayH + 6) + 'px';
+        bub.style.left     = '50%';
+        bub.style.transform = 'translateX(-50%)';
         if (isActive) {
           bub.style.fontSize = '7px';
           bub.style.maxWidth = '160px';
@@ -179,12 +175,12 @@ const World = {
       });
       World.charsLayer.appendChild(wrapper);
 
-      // Idle walk-cycle anim
+      // Idle walk-cycle
       if (!isActive) {
         var f = 0;
         World.animTimers[member.id] = setInterval(function() {
-          var ctx2 = canvas.getContext('2d');
-          ctx2.clearRect(0, 0, canvas.width, canvas.height);
+          var ctx2 = c.getContext('2d');
+          ctx2.clearRect(0, 0, c.width, c.height);
           ctx2.save();
           ctx2.scale(RENDER_SCALE, RENDER_SCALE);
           drawPixelChar(ctx2, pal, f % 2 === 0 ? 1 : 2);
@@ -193,29 +189,19 @@ const World = {
         }, 350);
         setTimeout(function() {
           clearInterval(World.animTimers[member.id]);
-          var ctx2 = canvas.getContext('2d');
-          ctx2.clearRect(0, 0, canvas.width, canvas.height);
+          var ctx2 = c.getContext('2d');
+          ctx2.clearRect(0, 0, c.width, c.height);
           ctx2.save();
           ctx2.scale(RENDER_SCALE, RENDER_SCALE);
           drawPixelChar(ctx2, pal, 0);
           ctx2.restore();
         }, 1400);
-      } else {
-        var ctx2 = canvas.getContext('2d');
-        ctx2.clearRect(0, 0, canvas.width, canvas.height);
-        ctx2.save();
-        ctx2.scale(RENDER_SCALE, RENDER_SCALE);
-        drawPixelChar(ctx2, pal, 3);
-        ctx2.restore();
       }
     });
   },
 
   selectChar(id) {
-    if (Chat.currentId === id) {
-      this._deactivate();
-      return;
-    }
+    if (Chat.currentId === id) { this._deactivate(); return; }
     var member = App.state.team.find(function(m) { return m.id === id; });
     if (!member) return;
     Chat.currentId = id;
@@ -228,23 +214,19 @@ const World = {
     document.querySelectorAll('.character').forEach(function(c) { c.classList.remove('selected'); });
   },
 
-  _calcPositions(count, W, activeId) {
+  _calcPositions(count, W) {
     if (this.meetingMode) {
       var spacing = Math.min(60, Math.floor(W * 0.6 / (count + 1)));
-      var centerX = W / 2;
       return Array.from({length: count}, function(_, i) {
-        return Math.round(centerX + (i - (count-1)/2) * spacing - 24);
+        return Math.round(W/2 + (i - (count-1)/2) * spacing - 24);
       });
     }
     var margin = 60;
-    var usable = W - margin * 2;
-    // Base positions spread evenly
-    var base = count === 1
-      ? [Math.round(W/2 - 24)]
-      : Array.from({length: count}, function(_, i) {
-          return Math.round(margin + (usable/(count-1)) * i - 24);
-        });
-    return base;
+    var usable  = W - margin * 2;
+    if (count === 1) return [Math.round(W/2 - 24)];
+    return Array.from({length: count}, function(_, i) {
+      return Math.round(margin + (usable/(count-1)) * i - 24);
+    });
   },
 
   _clearTimers() {
