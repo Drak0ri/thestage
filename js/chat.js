@@ -155,8 +155,10 @@ const Chat = {
       .filter(Boolean).join(', ');
     var groupCtx = othersForward ? 'Also present in the conversation: ' + othersForward + '. You may reference them.' : '';
 
+    var actionList = (typeof ACTIONS !== 'undefined') ? ACTIONS.join(', ') : '';
+    var actionCtx = actionList ? 'You can express yourself physically. At the START of your reply, optionally include one action tag like [ACTION:nod] — choose from: ' + actionList + '. Pick whichever fits your reaction. Leave it out if nothing fits.' : '';
     var system = 'You are ' + member.name + ', a team member on Baz\'s team. Role: ' + (member.role || 'team member') +
-      '. Personality: ' + member.personality + '. ' + roomCtx + ' ' + groupCtx +
+      '. Personality: ' + member.personality + '. ' + roomCtx + ' ' + groupCtx + ' ' + actionCtx +
       ' Keep responses SHORT (2-3 sentences). Be in-character. Never break character.';
 
     try {
@@ -166,7 +168,10 @@ const Chat = {
         body: JSON.stringify({ pin: App.pin, model: 'claude-sonnet-4-6', max_tokens: 1000, system: system, messages: messages })
       });
       var data  = await resp.json();
-      var reply = data.content && data.content[0] ? data.content[0].text : '...';
+      var rawReply = data.content && data.content[0] ? data.content[0].text : '...';
+      var actionMatch = rawReply.match(/\[ACTION:(\w+)\]/);
+      var reply = rawReply.replace(/\[ACTION:\w+\]\s*/,'').trim();
+      if (actionMatch) { World.playCharAction(member.id, actionMatch[1]); }
 
       this.sharedHistory.push({ role: 'assistant', content: reply, speakerId: member.id });
       thinking.remove();
