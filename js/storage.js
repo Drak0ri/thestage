@@ -1,7 +1,7 @@
 // js/storage.js
 
 const STORAGE_KEY = 'thestage_v1';
-const RELAY_URL   = 'https://script.google.com/macros/s/AKfycby0-GHkWJiJts2bPRdOqp5H-ozrSMumOFy6dpLnS-aABvC5HSud1iG7OERE3_FVR-8i/exec';
+const RELAY_URL = 'https://script.google.com/macros/s/AKfycbxUtte8plGg9O0pPXeedpm9oKhXBndYHOMYRBWxhbHM26ZChBcbhnzBiv7x_zJPVGRq/exec';
 
 const Storage = {
 
@@ -47,3 +47,4 @@ const Storage = {
     }
   }
 };
+
