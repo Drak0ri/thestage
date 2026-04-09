@@ -86,8 +86,8 @@ function drawPixelChar(ctx, p, frame) {
   // mouth
   const my = hy + hh - 5;
   px(hx+4,    my,   p.mouth, hw-8, 1);
-  px(hx+3,    my+1, p.mouth, 1, 1);
-  px(hx+hw-4, my+1, p.mouth, 1, 1);
+  px(hx+3,    my-1, p.mouth, 1, 1);
+  px(hx+hw-4, my-1, p.mouth, 1, 1);
 
   // ears
   px(hx-1,   ey,   p.skin,  1, 4);
