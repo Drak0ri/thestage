@@ -165,11 +165,19 @@ function drawPixelChar(ctx, p, frame, opts) {
 }
 
 /**
- * Draw a side-profile (silhouette-style) character — narrower, facing right.
- * walkPhase: 0=stand, 1=step front-leg forward, 2=step back-leg forward
+ * Draw a side-profile character — facing right by default.
+ *
+ * 4-phase walk cycle (classic pixel art contact/passing pattern):
+ *   phase 0 — contact-A: right foot forward+planted, left foot back
+ *   phase 1 — passing-A: legs cross/neutral, arms mid-swing
+ *   phase 2 — contact-B: left foot forward+planted, right foot back (mirror of 0)
+ *   phase 3 — passing-B: legs cross/neutral opposite swing, arms mid-swing
+ *
+ * Arms swing opposite to forward leg (as in real walking anatomy).
+ * offsetY=1 on contact frames for body bob is applied by the caller.
+ *
  * flipX: mirror to face left
- * opts.offsetY: vertical shift (for jump)
- * opts.crouchSide: crouching in side view
+ * opts.crouchSide: crouching pose
  */
 function drawPixelCharSide(ctx, p, walkPhase, flipX, opts) {
   opts = opts || {};
@@ -189,74 +197,128 @@ function drawPixelCharSide(ctx, p, walkPhase, flipX, opts) {
     ctx.fillRect(x, y + offsetY, w||1, h||1);
   };
 
-  // Side view — character occupies about 14px wide, centered around x=24
-  var cx = 20; // left edge of character body in side view
+  var cx = 19; // left edge of body — character is ~14px wide centered in 48
 
-  // Head — side profile: slightly flattened, one eye visible
+  // ── Head (side profile) ───────────────────────────────────────────
   var crouchShift = isCrouch ? 8 : 0;
-  var headY = 4 + crouchShift;
-  px(cx+2, headY, p.skin, 10, 14);          // main head block
-  px(cx+2, headY, p.hair, 10, 5);           // hair top
-  px(cx+2, headY+5, p.hair, 2, 6);          // hair back
-  px(cx+11, headY+4, p.skin, 2, 6);         // nose protrusion
-  px(cx+8, headY+7, '#fff', 2, 2);          // eye white
-  px(cx+9, headY+8, p.eyes, 1, 1);          // pupil
-  px(cx+8, headY+5, p.hair, 3, 1);          // eyebrow
-  px(cx+10, headY+11, p.mouth, 2, 1);       // mouth
-  px(cx+10, headY+10, p.skinS, 1, 1);       // lip upper
+  var headY = 3 + crouchShift;
+  // Head block (profile — slightly narrower than front)
+  px(cx+2, headY,    p.skin, 10, 14);
+  // Hair
+  px(cx+2, headY,    p.hair, 10, 5);
+  px(cx+2, headY+5,  p.hair, 2,  7);  // hair back
+  px(cx+10,headY+2,  p.hair, 1,  3);  // hair front edge
+  // Ear
+  px(cx+1, headY+8,  p.skin, 2,  3);
+  px(cx+1, headY+8,  p.skinS,1,  3);
+  // Nose
+  px(cx+12,headY+6,  p.skinS,2,  3);
+  // Eye
+  px(cx+8, headY+7,  '#fff', 2,  2);
+  px(cx+9, headY+8,  p.eyes,  1,  1);
+  // Eyebrow
+  px(cx+8, headY+5,  p.hair,  3,  1);
+  // Mouth
+  px(cx+9, headY+11, p.mouth, 2,  1);
 
-  // Neck
+  // ── Neck ──────────────────────────────────────────────────────────
   var neckY = headY + 14;
   px(cx+4, neckY, p.skin, 5, 4);
 
-  // Torso — side view is narrow
+  // ── Torso ─────────────────────────────────────────────────────────
   var torsoY = neckY + 4;
   var torsoH = isCrouch ? 12 : 18;
-  px(cx+2, torsoY, p.shirt, 10, torsoH);
-  px(cx+2, torsoY, p.shirtS, 1, torsoH);
-  px(cx+11, torsoY, p.shirtS, 1, torsoH);
-  px(cx+2, torsoY+torsoH-1, p.shirtS, 10, 1);
+  px(cx+2, torsoY, p.shirt,  10, torsoH);
+  px(cx+2, torsoY, p.shirtS, 1,  torsoH); // left edge shadow
+  px(cx+11,torsoY, p.shirtS, 1,  torsoH); // right edge shadow
+  px(cx+2, torsoY+torsoH-1, p.shirtS, 10, 1); // bottom edge
   // Belt
   var beltY = torsoY + torsoH;
   px(cx+2, beltY, p.belt, 10, 3);
 
-  // Arms — front arm and back arm (back arm slightly darker/offset)
-  var armY = torsoY;
-  // Back arm (slightly behind)
-  var backArmSwing = walkPhase===1 ? 5 : walkPhase===2 ? -5 : 0;
-  px(cx, armY + backArmSwing, p.shirtS, 4, 14);
-  px(cx, armY + 14 + backArmSwing, p.skinS, 4, 4);
-  // Front arm
-  var frontArmSwing = walkPhase===1 ? -5 : walkPhase===2 ? 5 : 0;
-  if (isCrouch) { frontArmSwing = 6; }
-  px(cx+10, armY + frontArmSwing, p.shirt, 4, 14);
-  px(cx+10, armY + 14 + frontArmSwing, p.skin, 4, 4);
+  // ── Arms ──────────────────────────────────────────────────────────
+  // Anatomy: arm opposite to forward leg.
+  // Phase 0 (contact-A): right leg fwd → left arm fwd, right arm back
+  // Phase 1 (passing): mid-swing
+  // Phase 2 (contact-B): left leg fwd → right arm fwd, left arm back
+  // Phase 3 (passing): mid-swing opposite
+  //
+  // We draw back arm first (behind torso = slightly left of body), front arm on top.
+  var armY = torsoY + 1;
+  var ARM_H = 13;
+  var HAND_H = 4;
 
-  // Legs — side walk cycle
-  var legStartY = beltY + 3;
+  // Swing offsets (vertical shift = arm forward/back)
+  // Negative = arm swings forward (up in sprite = forward in walk)
+  var backSwingTable  = [4, 0, -4, 0];  // phase 0,1,2,3
+  var frontSwingTable = [-4, 0, 4, 0];
+  var ph = isCrouch ? 0 : (walkPhase % 4);
+  var backSwing  = backSwingTable[ph];
+  var frontSwing = frontSwingTable[ph];
+
   if (isCrouch) {
-    // Bent legs in crouch
-    px(cx+3, legStartY, p.pants, 5, 8);      // upper back leg
-    px(cx+3, legStartY+8, p.pants, 8, 4);    // lower back leg (bent out)
-    px(cx+3, legStartY+12, p.shoes, 9, 4);   // back shoe
-    px(cx+6, legStartY, p.pants, 5, 8);      // upper front leg
-    px(cx+6, legStartY+8, p.pants, 8, 4);    // lower front leg (bent out)
-    px(cx+6, legStartY+12, p.shoes, 9, 4);   // front shoe
+    // Arms bent forward in crouch
+    px(cx,   armY+4, p.shirtS, 4, 10);
+    px(cx,   armY+14,p.skinS,  4, 4);
+    px(cx+10,armY+4, p.shirt,  4, 10);
+    px(cx+10,armY+14,p.skin,   4, 4);
   } else {
-    var lH = 18;
-    // Back leg
-    var backLegOff = walkPhase===1 ? -4 : walkPhase===2 ? 4 : 0;
-    px(cx+3, legStartY, p.pantsS, 5, lH/2);
-    px(cx+3+backLegOff, legStartY+lH/2, p.pantsS, 5, lH/2);
-    px(cx+2+backLegOff, legStartY+lH, p.shoes, 7, 4);
-    // Front leg
-    var frontLegOff = walkPhase===1 ? 4 : walkPhase===2 ? -4 : 0;
-    px(cx+5, legStartY, p.pants, 5, lH/2);
-    px(cx+5+frontLegOff, legStartY+lH/2, p.pants, 5, lH/2);
-    px(cx+4+frontLegOff, legStartY+lH, p.shoes, 8, 4);
-    // Sole lines
-    px(cx+3+backLegOff, legStartY+lH+3, '#555', 5, 1);
-    px(cx+4+frontLegOff, legStartY+lH+3, '#555', 6, 1);
+    // Back arm (darker — further from viewer)
+    px(cx,   armY+backSwing,       p.shirtS, 4, ARM_H);
+    px(cx,   armY+backSwing+ARM_H, p.skinS,  4, HAND_H);
+    // Front arm
+    px(cx+10,armY+frontSwing,       p.shirt,  4, ARM_H);
+    px(cx+10,armY+frontSwing+ARM_H, p.skin,   4, HAND_H);
+  }
+
+  // ── Legs ──────────────────────────────────────────────────────────
+  var legStartY = beltY + 3;
+  var LEG_H = 9;  // upper leg segment
+  var SHIN_H = 9; // lower leg segment (shin)
+  var SHOE_W = 8;
+
+  if (isCrouch) {
+    // Bent legs, wide stance
+    px(cx+2, legStartY,    p.pants,  5, 7);
+    px(cx+2, legStartY+7,  p.pants,  8, 4);
+    px(cx+1, legStartY+11, p.shoes,  9, 4);
+    px(cx+6, legStartY,    p.pantsS, 5, 7);
+    px(cx+6, legStartY+7,  p.pantsS, 8, 4);
+    px(cx+5, legStartY+11, p.shoes,  9, 4);
+  } else {
+    // 4-phase leg positions:
+    // Each leg = upper segment (thigh) + lower segment (shin) + shoe
+    // Front leg strides forward (shoe offset positive = forward in walk dir)
+    // Back leg strides backward (shoe offset negative)
+    // Passing phases have legs crossing near neutral
+
+    // Thigh pivot offsets (horizontal — stride)
+    var fThighTable = [3,  0, -3,  0]; // front thigh horizontal offset
+    var bThighTable = [-3, 0,  3,  0]; // back thigh horizontal offset
+    // Shin tip offsets (where the foot lands)
+    var fShinTable  = [5,  0, -5,  0];
+    var bShinTable  = [-5, 0,  5,  0];
+
+    var fT = fThighTable[ph];
+    var bT = bThighTable[ph];
+    var fS = fShinTable[ph];
+    var bS = bShinTable[ph];
+
+    // Lift front foot off ground on contact frames (phase 0 and 2) — 1px lift
+    var fLift = (ph===0||ph===2) ? -1 : 0;
+    var bLift = 0;
+
+    // Back leg (pantsS — darker, behind)
+    px(cx+4+bT, legStartY,         p.pantsS, 5, LEG_H);
+    px(cx+4+bS, legStartY+LEG_H,   p.pantsS, 5, SHIN_H+bLift);
+    px(cx+3+bS, legStartY+LEG_H+SHIN_H+bLift, p.shoes, SHOE_W, 4);
+    px(cx+4+bS, legStartY+LEG_H+SHIN_H+bLift+3, '#555', SHOE_W-2, 1);
+
+    // Front leg (pants — lighter, in front)
+    px(cx+4+fT, legStartY,         p.pants, 5, LEG_H);
+    px(cx+4+fS, legStartY+LEG_H,   p.pants, 5, SHIN_H+fLift);
+    px(cx+3+fS, legStartY+LEG_H+SHIN_H+fLift, p.shoes, SHOE_W+1, 4);
+    px(cx+4+fS, legStartY+LEG_H+SHIN_H+fLift+3, '#555', SHOE_W-1, 1);
   }
 
   if (flipX) ctx.restore();
