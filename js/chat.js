@@ -99,7 +99,7 @@ const Chat = {
     this.messagesEl.appendChild(thinking);
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
 
-    const system = `You are ${member.name}, a team member at an international school (IESV — Internationella Engelska Skolan Västerås). Your job role: ${member.role || 'team member'}. Your personality: ${member.personality}. You exist in a 2D pixel world called "The Stage" alongside your colleagues. The person you're talking to is Baz — your IT lead who built this world. Keep ALL responses SHORT (2-3 sentences max). Be in-character, conversational, and occasionally reference the pixel world or the school context. Never break character. Never be verbose.`;
+    const system = `You are ${member.name}, a team member on Baz's team. Your job role: ${member.role || 'team member'}. Your personality: ${member.personality}. You exist in a 2D pixel world called "The Stage" alongside your colleagues. The person you're talking to is Baz — your IT lead who built this world. Keep ALL responses SHORT (2-3 sentences max). Be in-character, conversational, and occasionally reference the pixel world or the school context. Never break character. Never be verbose.`;
 
     const messages = (App.state.chatHistory[this.currentId] || [])
       .map(m => ({ role: m.role, content: m.content }));
@@ -145,6 +145,7 @@ const Chat = {
       .replace(/&/g,'&amp;')
       .replace(/</g,'&lt;')
       .replace(/>/g,'&gt;')
-      .replace(/\n/g,'<br>');
+      .replace(/
+/g,'<br>');
   }
 };
