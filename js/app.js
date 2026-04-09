@@ -1,6 +1,17 @@
 // js/app.js — main controller, bootstraps everything
 
 const App = {
+  pin: null,
+
+  submitPin() {
+    var val = document.getElementById('pin-input').value.trim();
+    if (!val) return;
+    App.pin = val;
+    sessionStorage.setItem('stage_pin', val);
+    document.getElementById('pin-overlay').style.display = 'none';
+    App.init();
+  },
+
   state: { team: [], chatHistory: {} },
   meetingMode: false,
   inviteList: [], // ids currently "on stage" in meeting mode
@@ -105,5 +116,10 @@ const App = {
   }
 };
 
-document.addEventListener('DOMContentLoaded', () => App.init());
+document.addEventListener('DOMContentLoaded', () => {
+  // PIN check — try sessionStorage first so reload doesn't re-prompt
+  var saved = sessionStorage.getItem('stage_pin');
+  if (saved) { App.pin = saved; App.init(); }
+  else { document.getElementById('pin-overlay').style.display = 'flex'; }
+});
 
