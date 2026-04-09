@@ -143,7 +143,7 @@ const World = {
       c.id='canvas-'+member.id;
       var ctx=c.getContext('2d');
       ctx.save(); ctx.scale(RENDER_SCALE,RENDER_SCALE);
-      drawPixelChar(ctx,pal,isForward?3:0);
+      drawChar(ctx,pal,isForward?3:0,isForward?{facing:'front'}:{facing:'front'});
       ctx.restore();
 
       var wrapper=document.createElement('div');
@@ -208,21 +208,21 @@ const World = {
               if (document.getElementById('char-'+id)) pickTarget();
             }, 1500+Math.random()*2000);
             World.animTimers[id+'_still']=stillTimer;
-            // Idle stand frame
+            // Idle stand frame — turn to face front when stopped
             var ctx2=canvas.getContext('2d');
             ctx2.clearRect(0,0,canvas.width,canvas.height);
             ctx2.save();ctx2.scale(RENDER_SCALE,RENDER_SCALE);
-            drawPixelChar(ctx2,pal,0);
+            drawChar(ctx2,pal,0,{facing:'front'});
             ctx2.restore();
           } else {
             state.x+=speed*state.dir;
             wrapper.style.left=Math.round(state.x)+'px';
-            // Walk cycle
-            var f=frame%2===0?1:2;
+            // Side-view walk cycle — flip direction to face travel direction
+            var walkPhase=frame%2===0?1:2;
             var ctx2=canvas.getContext('2d');
             ctx2.clearRect(0,0,canvas.width,canvas.height);
             ctx2.save();ctx2.scale(RENDER_SCALE,RENDER_SCALE);
-            drawPixelChar(ctx2,pal,f,{scaleX:state.dir<0?-1:1});
+            drawChar(ctx2,pal,0,{facing:'side',walkPhase:walkPhase,flipX:state.dir<0});
             ctx2.restore();
             frame++;
           }
