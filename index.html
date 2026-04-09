@@ -66,6 +66,20 @@
     </div>
   </div>
 
+
+  <!-- PIN OVERLAY -->
+  <div id="pin-overlay" style="display:none;position:fixed;inset:0;background:#0a0914;z-index:999;align-items:center;justify-content:center;flex-direction:column;gap:16px;">
+    <div style="font-family:'Press Start 2P',monospace;font-size:14px;color:#ffcc44;margin-bottom:8px;">&#127917; THE STAGE</div>
+    <div style="font-family:'Press Start 2P',monospace;font-size:7px;color:#6677aa;margin-bottom:16px;">enter PIN to continue</div>
+    <input id="pin-input" type="password" maxlength="20" autocomplete="off"
+      style="font-family:'Press Start 2P',monospace;font-size:10px;background:#1a1a2e;color:#fff;border:2px solid #5555cc;border-radius:4px;padding:10px 14px;outline:none;text-align:center;width:180px;"
+      onkeydown="if(event.key==='Enter')App.submitPin()">
+    <button onclick="App.submitPin()"
+      style="font-family:'Press Start 2P',monospace;font-size:8px;background:#5555cc;color:#fff;border:2px solid #8888ff;border-radius:4px;padding:10px 20px;cursor:pointer;">
+      ENTER &#9654;
+    </button>
+  </div>
+
   <script src="js/chars.js"></script>
   <script src="js/storage.js"></script>
   <script src="js/chat.js"></script>
