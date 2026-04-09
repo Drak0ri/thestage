@@ -306,17 +306,7 @@ const World = {
       nameEl.textContent = member.name.split(' ')[0].substring(0, 10);
       wrapper.appendChild(nameEl);
 
-      if (member.bubble) {
-        var bub = document.createElement('div');
-        bub.className = 'speech-bubble';
-        bub.style.position  = 'absolute';
-        bub.style.bottom    = (displayH + 6) + 'px';
-        bub.style.left      = '50%';
-        bub.style.transform = 'translateX(-50%)';
-        if (isActive) { bub.style.fontSize='7px'; bub.style.maxWidth='160px'; bub.style.padding='7px 9px'; }
-        bub.textContent = member.bubble;
-        wrapper.appendChild(bub);
-      }
+
 
       wrapper.addEventListener('click', function(e) {
         e.stopPropagation();
