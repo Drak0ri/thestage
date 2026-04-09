@@ -87,11 +87,7 @@ const Chat = {
     if (!App.state.chatHistory[this.currentId]) App.state.chatHistory[this.currentId] = [];
     App.state.chatHistory[this.currentId].push({ role: 'user', content: text });
     this._appendMsg('user', text);
-
-    member.bubble = '...';
-    World.render();
-
-    const thinking = document.createElement('div');
+const thinking = document.createElement('div');
     thinking.className = 'msg ai thinking';
     thinking.textContent = '\u25cb thinking...';
     this.messagesEl.appendChild(thinking);
@@ -121,10 +117,8 @@ const Chat = {
       App.state.chatHistory[this.currentId].push({ role: 'assistant', content: reply });
       thinking.remove();
       this._appendMsg('assistant', reply, this.currentId);
-
-      member.bubble = reply.length > 50 ? reply.substring(0, 48) + '\u2026' : reply;
-      World.render();
-      setTimeout(() => { member.bubble = null; World.render(); }, 6000);
+setTimeout(() => {
+}, 6000);
 
       Storage.cloudSave(App.state);
     } catch (e) {
@@ -133,9 +127,7 @@ const Chat = {
       err.className = 'msg ai';
       err.innerHTML = '<div class="speaker">ERROR</div>Connection failed.';
       this.messagesEl.appendChild(err);
-      member.bubble = null;
-      World.render();
-    }
+}
   },
 
   _esc(t) {
