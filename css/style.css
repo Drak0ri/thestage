@@ -349,3 +349,15 @@ body {
   .px-btn { padding: 6px 8px; font-size: 6px; }
   :root { --world-h: 260px; --chat-h: 280px; }
 }
+
+/* ── LARGE ACTIVE CHARACTER ─────────────────────── */
+.character.selected .char-canvas {
+  animation: none;
+}
+.character.selected {
+  filter: drop-shadow(0 0 12px rgba(255,204,68,0.6));
+  z-index: 20;
+}
+.character {
+  will-change: transform, bottom, width;
+}
