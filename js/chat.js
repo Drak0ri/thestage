@@ -103,7 +103,7 @@ const Chat = {
       .map(m => ({ role: m.role, content: m.content }));
 
     try {
-      const resp = await fetch('https://script.google.com/macros/s/AKfycbyCIcXF9m3HbHdWr0OJuwuPyHl9r4JHpcIPOqF7DssjmLIcWKJ_q4dQxY4pfylr7ASe/exec', {
+      const resp = await fetch('https://script.google.com/macros/s/AKfycby0-GHkWJiJts2bPRdOqp5H-ozrSMumOFy6dpLnS-aABvC5HSud1iG7OERE3_FVR-8i/exec', {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({
@@ -125,7 +125,7 @@ const Chat = {
       World.render();
       setTimeout(() => { member.bubble = null; World.render(); }, 6000);
 
-      Storage.save(App.state);
+      Storage.cloudSave(App.state);
     } catch (e) {
       thinking.remove();
       const err = document.createElement('div');
@@ -145,3 +145,4 @@ const Chat = {
       .replace(/\n/g, '<br>');
   }
 };
+
