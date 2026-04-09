@@ -23,7 +23,6 @@ const Chat = {
     document.getElementById('chat-name').textContent = member.name;
     document.getElementById('chat-role').textContent = member.role || 'Team Member';
 
-    // Avatar
     const av = document.getElementById('chat-avatar');
     const ctx = av.getContext('2d');
     ctx.clearRect(0, 0, av.width, av.height);
@@ -61,7 +60,7 @@ const Chat = {
     div.className = 'msg ' + (role === 'user' ? 'user' : 'ai');
     if (role === 'assistant') {
       const member = App.state.team.find(t => t.id === (id || this.currentId));
-      div.innerHTML = `<div class="speaker">${member ? member.name.toUpperCase() : ''}</div>${this._esc(content)}`;
+      div.innerHTML = '<div class="speaker">' + (member ? member.name.toUpperCase() : '') + '</div>' + this._esc(content);
     } else {
       div.textContent = content;
     }
@@ -89,17 +88,16 @@ const Chat = {
     App.state.chatHistory[this.currentId].push({ role: 'user', content: text });
     this._appendMsg('user', text);
 
-    // Thinking
     member.bubble = '...';
     World.render();
 
     const thinking = document.createElement('div');
     thinking.className = 'msg ai thinking';
-    thinking.textContent = '▋ thinking...';
+    thinking.textContent = '\u25cb thinking...';
     this.messagesEl.appendChild(thinking);
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
 
-    const system = `You are ${member.name}, a team member on Baz's team. Your job role: ${member.role || 'team member'}. Your personality: ${member.personality}. You exist in a 2D pixel world called "The Stage" alongside your colleagues. The person you're talking to is Baz — your IT lead who built this world. Keep ALL responses SHORT (2-3 sentences max). Be in-character, conversational, and occasionally reference the pixel world or the school context. Never break character. Never be verbose.`;
+    const system = 'You are ' + member.name + ', a team member on Baz\'s team. Your job role: ' + (member.role || 'team member') + '. Your personality: ' + member.personality + '. You exist in a 2D pixel world called "The Stage" alongside your colleagues. The person talking to you is Baz. Keep ALL responses SHORT (2-3 sentences max). Be in-character and conversational. Never break character. Never be verbose.';
 
     const messages = (App.state.chatHistory[this.currentId] || [])
       .map(m => ({ role: m.role, content: m.content }));
@@ -117,14 +115,13 @@ const Chat = {
       });
 
       const data = await resp.json();
-      const reply = data.content?.[0]?.text || '...';
+      const reply = data.content && data.content[0] ? data.content[0].text : '...';
 
       App.state.chatHistory[this.currentId].push({ role: 'assistant', content: reply });
       thinking.remove();
       this._appendMsg('assistant', reply, this.currentId);
 
-      // Speech bubble
-      member.bubble = reply.length > 50 ? reply.substring(0, 48) + '…' : reply;
+      member.bubble = reply.length > 50 ? reply.substring(0, 48) + '\u2026' : reply;
       World.render();
       setTimeout(() => { member.bubble = null; World.render(); }, 6000);
 
@@ -133,7 +130,7 @@ const Chat = {
       thinking.remove();
       const err = document.createElement('div');
       err.className = 'msg ai';
-      err.innerHTML = '<div class="speaker">ERROR</div>Connection failed — check console.';
+      err.innerHTML = '<div class="speaker">ERROR</div>Connection failed.';
       this.messagesEl.appendChild(err);
       member.bubble = null;
       World.render();
@@ -142,10 +139,9 @@ const Chat = {
 
   _esc(t) {
     return String(t)
-      .replace(/&/g,'&amp;')
-      .replace(/</g,'&lt;')
-      .replace(/>/g,'&gt;')
-      .replace(/
-/g,'<br>');
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\n/g, '<br>');
   }
 };
