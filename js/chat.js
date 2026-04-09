@@ -107,6 +107,7 @@ const Chat = {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({
+          pin: App.pin,
           model: 'claude-sonnet-4-6',
           max_tokens: 1000,
           system,
