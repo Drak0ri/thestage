@@ -23,7 +23,7 @@ const Storage = {
       await fetch(RELAY_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ action: 'save', state: state })
+        body: JSON.stringify({ action: 'save', state: state, pin: App.pin })
       });
     } catch(e) { console.warn('cloud save failed', e); }
   },
@@ -33,7 +33,7 @@ const Storage = {
       var resp  = await fetch(RELAY_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ action: 'load' })
+        body: JSON.stringify({ action: 'load', pin: App.pin })
       });
       var data = await resp.json();
       if (data.ok && data.state) {
