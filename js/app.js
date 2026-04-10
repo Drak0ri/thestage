@@ -1,3 +1,4 @@
+// js/app.js v2
 // js/app.js — main controller, bootstraps everything
 
 const App = {
