@@ -1,4 +1,3 @@
-// js/app.js v2
 // js/app.js — main controller, bootstraps everything
 
 const App = {
@@ -108,21 +107,17 @@ const App = {
     this.state.team.push(member);
     Storage.cloudSave(this.state);
 
-    // Give new avatar a top-down position near the stage entrance
-    if (typeof TopDown !== 'undefined') {
-      TopDown.ensureState(member, 'outdoor');
-      var s = TopDown.avatarStates[member.id];
-      var i = this.state.team.length - 1;
-      s.x = 28 + (i % 4) * 2;
-      s.y = 21 + Math.floor(i / 4) * 2;
-    }
-
     document.getElementById('add-modal').classList.remove('open');
     document.getElementById('new-name').value = '';
     document.getElementById('new-role').value = '';
 
     World.render();
     this.setStatus(name + ' has joined The Stage!');
+
+    // Welcome bubble
+    member.bubble = 'Hey! 👾';
+    World.render();
+    setTimeout(() => { member.bubble = null; World.render(); }, 3000);
   }
 };
 
