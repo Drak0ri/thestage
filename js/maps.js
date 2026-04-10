@@ -64,37 +64,31 @@ const TILE = 16;
 // doorId → { toMap, spawnX, spawnY, facing }
 // fromMap doorTile position → doorId
 const DOORS = {
-  // Outdoor → Stage
-  'outdoor:stage_enter':   { toMap:'stage',      spawnX:6,  spawnY:14, facing:'down'  },
-  // Stage → Outdoor
-  'stage:outdoor_exit':    { toMap:'outdoor',    spawnX:30, spawnY:19, facing:'down'  },
-  // Outdoor → Boardroom
-  'outdoor:board_enter':   { toMap:'boardroom',  spawnX:5,  spawnY:12, facing:'right' },
-  // Boardroom → Outdoor
-  'board:outdoor_exit':    { toMap:'outdoor',    spawnX:47, spawnY:21, facing:'left'  },
-  // Outdoor → Playground
-  'outdoor:play_enter':    { toMap:'playground', spawnX:7,  spawnY:5,  facing:'down'  },
-  // Playground → Outdoor
-  'play:outdoor_exit':     { toMap:'outdoor',    spawnX:13, spawnY:31, facing:'down'  },
-  // Outdoor → Cafe
-  'outdoor:cafe_enter':    { toMap:'cafe',       spawnX:6,  spawnY:11, facing:'up'    },
-  // Cafe → Outdoor
-  'cafe:outdoor_exit':     { toMap:'outdoor',    spawnX:46, spawnY:31, facing:'down'  },
-  // Outdoor → Library (locked by default — checked at runtime)
-  'outdoor:library_enter': { toMap:'library',    spawnX:6,  spawnY:9,  facing:'down'  },
-  // Library → Outdoor
-  'library:outdoor_exit':  { toMap:'outdoor',    spawnX:30, spawnY:33, facing:'down'  },
+  'outdoor:stage_enter':   { toMap:'stage',      spawnX:7,  spawnY:12, facing:'down'  },
+  'stage:outdoor_exit':    { toMap:'outdoor',    spawnX:30, spawnY:20, facing:'down'  },
+  'outdoor:board_enter':   { toMap:'boardroom',  spawnX:6,  spawnY:7,  facing:'right' },
+  'board:outdoor_exit':    { toMap:'outdoor',    spawnX:49, spawnY:22, facing:'right' },
+  'outdoor:play_enter':    { toMap:'playground', spawnX:7,  spawnY:8,  facing:'down'  },
+  'play:outdoor_exit':     { toMap:'outdoor',    spawnX:13, spawnY:33, facing:'down'  },
+  'outdoor:cafe_enter':    { toMap:'cafe',       spawnX:6,  spawnY:10, facing:'up'    },
+  'cafe:outdoor_exit':     { toMap:'outdoor',    spawnX:46, spawnY:32, facing:'down'  },
+  'outdoor:library_enter': { toMap:'library',    spawnX:7,  spawnY:7,  facing:'down'  },
+  'library:outdoor_exit':  { toMap:'outdoor',    spawnX:30, spawnY:36, facing:'down'  },
 };
 
 // Helper: given a map name and tile position, return the door id if it's a door tile
 // Each map defines its door positions as part of its metadata
 const MAP_DOORS = {
-  outdoor:    { '30,18':'outdoor:stage_enter', '47,20':'outdoor:board_enter', '13,30':'outdoor:play_enter', '46,30':'outdoor:cafe_enter', '30,32':'outdoor:library_enter' },
-  stage:      { '6,15':'stage:outdoor_exit'    },
-  boardroom:  { '5,13':'board:outdoor_exit'    },
-  playground: { '7,6':'play:outdoor_exit'      },
-  cafe:       { '6,12':'cafe:outdoor_exit'     },
-  library:    { '6,10':'library:outdoor_exit'  },
+  outdoor:    { '29,17':'outdoor:stage_enter', '30,17':'outdoor:stage_enter',
+                '46,21':'outdoor:board_enter', '47,21':'outdoor:board_enter',
+                '12,31':'outdoor:play_enter',  '13,31':'outdoor:play_enter',
+                '45,30':'outdoor:cafe_enter',  '46,30':'outdoor:cafe_enter',
+                '29,38':'outdoor:library_enter','30,38':'outdoor:library_enter' },
+  stage:      { '6,15':'stage:outdoor_exit',   '7,15':'stage:outdoor_exit'   },
+  boardroom:  { '0,7':'board:outdoor_exit'                                    },
+  playground: { '6,12':'play:outdoor_exit',    '7,12':'play:outdoor_exit'    },
+  cafe:       { '5,13':'cafe:outdoor_exit',    '6,13':'cafe:outdoor_exit'    },
+  library:    { '6,12':'library:outdoor_exit', '7,12':'library:outdoor_exit' },
 };
 
 // ── OUTDOOR MAP (60×40 tiles) ─────────────────────────────────────────────────
