@@ -26,7 +26,8 @@ const World = {
       var t = e.target;
       if (t === World.container || t.id === 'bg-canvas' ||
           t.classList.contains('floor-tile') || t.id === 'stars-layer' ||
-          t.id === 'world-hud' || t.id === 'status-bar') {
+          t.id === 'world-hud' || t.id === 'status-bar' ||
+          t.id === 'objects-canvas' || t.id === 'chars-layer') {
         Chat.dismissAll(); World.render();
       }
     });
