@@ -76,7 +76,7 @@ body {
   position: relative;
   width: 100%;
   height: var(--world-h);
-  background: linear-gradient(180deg, #050410 0%, #0a0920 55%, #1a1840 100%);
+  background: #0a0f06;
   overflow: hidden;
 }
 #bg-canvas {
