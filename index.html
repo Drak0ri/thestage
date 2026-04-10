@@ -22,7 +22,6 @@
         <button class="px-btn room-btn active" data-room="stage">&#127917; STAGE</button>
         <button class="px-btn room-btn" data-room="boardroom">&#127963; BOARD</button>
         <button class="px-btn room-btn" data-room="playground">&#127912; PLAY</button>
-        <button class="px-btn room-btn" data-room="outdoor">&#127757; OUTSIDE</button>
         <div style="width:1px;background:var(--border);margin:0 4px;align-self:stretch;"></div>
         <button class="px-btn" id="btn-meeting">&#9873; MEETING</button>
         <button class="px-btn" id="btn-add">&#65291; ADD</button>
@@ -33,10 +32,9 @@
     <div id="world-container">
       <div id="stars-layer"></div>
       <canvas id="bg-canvas"></canvas>
-      <canvas id="world-canvas" style="position:absolute;top:0;left:0;width:100%;height:100%;image-rendering:pixelated;cursor:crosshair;"></canvas>
       <div id="chars-layer"></div>
       <div id="world-hud">
-        <span id="status-bar">use arrow keys or click to move · walk through doors to enter buildings</span>
+        <span id="status-bar">click a character to chat</span>
       </div>
     </div>
 
@@ -86,16 +84,12 @@
     </button>
   </div>
 
-  <script src="js/rooms.js?v=2"></script>
-  <script src="js/chars.js?v=2"></script>
-  <script src="js/storage.js?v=2"></script>
-  <script src="js/chat.js?v=2"></script>
-  <script src="js/maps.js?v=2"></script>
-  <script src="js/topdown.js?v=2"></script>
-  <script src="js/tilemap.js?v=2"></script>
-  <script src="js/objects.js?v=2"></script>
-  <script src="js/puzzles.js?v=2"></script>
-  <script src="js/world.js?v=2"></script>
-  <script src="js/app.js?v=2"></script>
+  <script src="js/rooms.js?v=3"></script>
+  <script src="js/chars.js?v=3"></script>
+  <script src="js/storage.js?v=3"></script>
+  <script src="js/chat.js?v=3"></script>
+  <script src="js/objects.js?v=3"></script>
+  <script src="js/world.js?v=3"></script>
+  <script src="js/app.js?v=3"></script>
 </body>
 </html>
