@@ -106,9 +106,16 @@ const TileMap = (function() {
     ctx.translate(sx, sy);
 
     switch(tileId) {
-      case 0: // grass — subtle variation
-        ctx.fillStyle = 'rgba(0,0,0,0.04)';
-        if ((_t+sx+sy)%7===0) ctx.fillRect(2,2,s-4,s-4);
+      case 0: // grass — static positional variation (no animation)
+        // Use tile position hash for static texture — never changes
+        var gh = (Math.floor(sx/s)*31 + Math.floor(sy/s)*17) & 0xff;
+        if (gh % 5 === 0) {
+          ctx.fillStyle = 'rgba(0,0,0,0.06)';
+          ctx.fillRect(3,3,s-6,s-6);
+        } else if (gh % 7 === 0) {
+          ctx.fillStyle = 'rgba(255,255,255,0.03)';
+          ctx.fillRect(2,5,4,3);
+        }
         break;
       case 1: // dirt — texture lines
         ctx.strokeStyle='rgba(0,0,0,0.08)'; ctx.lineWidth=0.5;
