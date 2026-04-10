@@ -12,7 +12,7 @@ const ROOMS = {
   boardroom: {
     id:    'boardroom',
     label: '🏛 BOARDROOM',
-    floor:  { color1: '#2a1a0a', color2: '#221408', border: '#8b6914' },
+    floor:  { color1: '#2a2a2e', color2: '#242428', border: '#555560' },
     sky:   ['#0a0806','#1a1008','#2a1e10'],
     aiContext: 'You are in the Boardroom. Be professional, focused and concise. Speak as if in a formal meeting — structured, direct, no fluff. Reference agendas, decisions, action points where relevant.',
     statusLabel: 'Boardroom'
