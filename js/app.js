@@ -121,7 +121,7 @@ const App = {
     document.getElementById('new-role').value = '';
 
     World.render();
-    this.setStatus(name + ' has joined The Stage! They're outside.');
+    this.setStatus(name + ' has joined The Stage!');
   }
 };
 
