@@ -8,9 +8,9 @@ const Storage = {
   load() {
     try {
       var raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return { team: [], chatHistory: {} };
+      if (!raw) return { team: [], chatHistory: {}, briefing: '' };
       return JSON.parse(raw);
-    } catch(e) { return { team: [], chatHistory: {} }; }
+    } catch(e) { return { team: [], chatHistory: {}, briefing: '' }; }
   },
 
   save(state) {
