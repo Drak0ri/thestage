@@ -88,16 +88,181 @@ const World = {
   },
 
   _drawBoardroom(ctx,W,H) {
-    ctx.fillStyle='#1a0e06';ctx.fillRect(0,0,W,H);
-    for(var px2=0;px2<W;px2+=60){ctx.fillStyle='rgba(80,40,10,0.15)';ctx.fillRect(px2,0,2,H-FLOOR_H);}
-    for(var py=30;py<H-FLOOR_H;py+=50){ctx.fillStyle='rgba(80,40,10,0.1)';ctx.fillRect(0,py,W,2);}
-    var wX=W/2-160,wY=20,wW=320,wH=H-FLOOR_H-40;
-    ctx.fillStyle='#0a1628';ctx.fillRect(wX,wY,wW,wH);
-    ctx.strokeStyle='#8b6914';ctx.lineWidth=4;ctx.strokeRect(wX,wY,wW,wH);
-    ctx.beginPath();ctx.moveTo(wX+wW/2,wY);ctx.lineTo(wX+wW/2,wY+wH);ctx.moveTo(wX,wY+wH/2);ctx.lineTo(wX+wW,wY+wH/2);ctx.strokeStyle='#8b6914';ctx.lineWidth=2;ctx.stroke();
-    for(var bx=wX+10;bx<wX+wW-10;bx+=18){var bh2=20+Math.random()*40;ctx.fillStyle='#0d0c22';ctx.fillRect(bx,wY+wH-bh2,14,bh2);for(var wy2=wY+wH-bh2+4;wy2<wY+wH-4;wy2+=8){ctx.fillStyle=Math.random()>0.4?'#ffcc4425':'#3366ff15';ctx.fillRect(bx+2,wy2,4,5);ctx.fillRect(bx+8,wy2,4,5);}}
-    var tx=W/2-180,ty=H-FLOOR_H-28,tw=360,th=22;ctx.fillStyle='#5c3310';ctx.fillRect(tx,ty,tw,th);ctx.fillStyle='#7a4518';ctx.fillRect(tx,ty,tw,4);ctx.strokeStyle='#8b6914';ctx.lineWidth=2;ctx.strokeRect(tx,ty,tw,th);ctx.fillStyle='rgba(255,200,100,0.06)';ctx.fillRect(tx+10,ty+6,tw-20,4);
-    for(var lx=100;lx<W-80;lx+=120){ctx.fillStyle='#ffeeaa22';ctx.beginPath();ctx.arc(lx,8,20,0,Math.PI*2);ctx.fill();ctx.fillStyle='#ffe8aa';ctx.fillRect(lx-3,0,6,12);}
+    var floor=H-FLOOR_H;
+
+    // ── Ceiling — white acoustic tile panels ──────────────────────────────
+    var ceilH=Math.round(H*0.22);
+    ctx.fillStyle='#e8eaec';ctx.fillRect(0,0,W,ceilH);
+    // Ceiling tile grid
+    ctx.strokeStyle='rgba(180,185,190,0.7)';ctx.lineWidth=0.8;
+    var tileW=Math.round(W/10),tileH=Math.round(ceilH/3);
+    for(var tx2=0;tx2<W;tx2+=tileW){ctx.beginPath();ctx.moveTo(tx2,0);ctx.lineTo(tx2,ceilH);ctx.stroke();}
+    for(var ty2=0;ty2<ceilH;ty2+=tileH){ctx.beginPath();ctx.moveTo(0,ty2);ctx.lineTo(W,ty2);ctx.stroke();}
+    // Recessed fluorescent strips
+    var stripY=Math.round(ceilH*0.55),stripH=8;
+    [W*0.25,W*0.5,W*0.75].forEach(function(sx){
+      var sw=Math.round(W*0.15);
+      ctx.fillStyle='rgba(240,250,255,0.9)';ctx.fillRect(sx-sw/2,stripY,sw,stripH);
+      var gl=ctx.createLinearGradient(0,stripY,0,stripY+30);
+      gl.addColorStop(0,'rgba(220,240,255,0.35)');gl.addColorStop(1,'rgba(220,240,255,0)');
+      ctx.fillStyle=gl;ctx.fillRect(sx-sw/2-10,stripY,sw+20,30);
+    });
+
+    // ── Back wall — floor-to-ceiling panoramic windows ─────────────────────
+    var wallTop=ceilH, wallBot=floor;
+    // Sky/outside — bright overcast daylight
+    var skyGrad=ctx.createLinearGradient(0,wallTop,0,wallBot);
+    skyGrad.addColorStop(0,'#c8dff0');skyGrad.addColorStop(0.6,'#ddeeff');skyGrad.addColorStop(1,'#ccd8e8');
+    ctx.fillStyle=skyGrad;ctx.fillRect(0,wallTop,W,wallBot-wallTop);
+
+    // Window frame grid — horizontal rails
+    var railCols=['rgba(160,170,175,0.9)','rgba(140,150,155,0.7)'];
+    var numH=4;
+    for(var ri=0;ri<=numH;ri++){
+      var ry=wallTop+(wallBot-wallTop)*ri/numH;
+      ctx.fillStyle=railCols[ri%2];ctx.fillRect(0,ry-1,W,2);
+    }
+    // Window frame grid — vertical mullions (perspective: closer together at edges)
+    var numV=9;
+    for(var vi=0;vi<=numV;vi++){
+      var vx=Math.round(W*vi/numV);
+      ctx.fillStyle='rgba(150,160,165,0.6)';ctx.fillRect(vx-1,wallTop,2,wallBot-wallTop);
+    }
+    // Window glare — bright wash on upper panes
+    var glare=ctx.createLinearGradient(0,wallTop,0,wallTop+(wallBot-wallTop)*0.4);
+    glare.addColorStop(0,'rgba(255,255,255,0.55)');glare.addColorStop(1,'rgba(255,255,255,0)');
+    ctx.fillStyle=glare;ctx.fillRect(0,wallTop,W,(wallBot-wallTop)*0.4);
+    // Horizontal blinds — partially open, subtle
+    for(var bi=0;bi<6;bi++){
+      var by=wallTop+(wallBot-wallTop)*0.05+bi*((wallBot-wallTop)*0.08);
+      ctx.fillStyle='rgba(200,215,225,0.18)';ctx.fillRect(0,by,W,4);
+    }
+    // Distant building / tree silhouette hints through glass
+    ctx.fillStyle='rgba(100,130,110,0.12)';
+    ctx.beginPath();ctx.ellipse(W*0.15,wallBot-20,30,45,0,Math.PI,0);ctx.fill();
+    ctx.beginPath();ctx.ellipse(W*0.82,wallBot-15,25,38,0,Math.PI,0);ctx.fill();
+    ctx.fillStyle='rgba(130,140,150,0.1)';
+    ctx.fillRect(W*0.38,wallTop+10,18,wallBot-wallTop-10);  // distant column hint
+
+    // ── Side walls — grey/beige painted drywall ───────────────────────────
+    // Left wall strip (perspective)
+    var lwGrad=ctx.createLinearGradient(0,0,Math.round(W*0.08),0);
+    lwGrad.addColorStop(0,'#b8bfc4');lwGrad.addColorStop(1,'rgba(185,192,198,0)');
+    ctx.fillStyle=lwGrad;ctx.fillRect(0,ceilH,Math.round(W*0.08),floor-ceilH);
+    // Right wall strip
+    var rwGrad=ctx.createLinearGradient(W,0,W-Math.round(W*0.08),0);
+    rwGrad.addColorStop(0,'#b8bfc4');rwGrad.addColorStop(1,'rgba(185,192,198,0)');
+    ctx.fillStyle=rwGrad;ctx.fillRect(W-Math.round(W*0.08),ceilH,Math.round(W*0.08),floor-ceilH);
+
+    // ── Floor — carpet (dark charcoal, like the image) ────────────────────
+    // Already drawn by _buildFloor — but add a subtle perspective gradient
+    var carpetGrad=ctx.createLinearGradient(0,floor,0,floor+FLOOR_H);
+    carpetGrad.addColorStop(0,'rgba(30,30,35,0.4)');carpetGrad.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=carpetGrad;ctx.fillRect(0,floor,W,FLOOR_H);
+
+    // ── U-shaped conference table — dark mahogany, perspective view ────────
+    // The table in the image is a U/horseshoe opening toward camera.
+    // We draw it as a thick U in perspective: two side arms coming toward viewer
+    // and a connecting back bar, all with a glossy dark-red-brown surface.
+    var tMid=Math.round(W/2);
+    var tBackY=Math.round(floor*0.62);   // back of table (far end, near window)
+    var tFrontY=floor-2;                 // front edge at floor level
+    var tArmX_L=Math.round(W*0.14);     // left arm outer edge
+    var tArmX_R=Math.round(W*0.86);     // right arm outer edge
+    var tThick=18;                        // table top thickness in pixels
+    var tInnerL=Math.round(W*0.30);      // inner channel left
+    var tInnerR=Math.round(W*0.70);      // inner channel right
+
+    var tableCol='#3d1a08';
+    var tableHighlight='#6b3318';
+    var tableShadow='#1a0803';
+    var tableGloss='rgba(255,180,100,0.07)';
+
+    // Helper: draw a filled trapezoid (perspective table surface)
+    function trapezoid(x1,y1,x2,y2,x3,y3,x4,y4,fill,stroke){
+      ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.lineTo(x3,y3);ctx.lineTo(x4,y4);ctx.closePath();
+      if(fill){ctx.fillStyle=fill;ctx.fill();}
+      if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1;ctx.stroke();}
+    }
+
+    // Back connecting bar (horizontal, far end, narrow in perspective)
+    var backBarH=tThick*0.6;
+    var backBarW_half=tInnerR-tMid; // half width of the back bar top face
+    trapezoid(tArmX_L,tBackY, tArmX_R,tBackY, tArmX_R,tBackY+backBarH, tArmX_L,tBackY+backBarH, tableCol,'#2a1005');
+    // Top face of back bar — lighter
+    trapezoid(tArmX_L,tBackY-4, tArmX_R,tBackY-4, tArmX_R+4,tBackY+2, tArmX_L-4,tBackY+2, tableHighlight, null);
+    // Gloss streak
+    ctx.fillStyle=tableGloss;ctx.fillRect(tArmX_L+20,tBackY-4,tArmX_R-tArmX_L-40,2);
+
+    // Left arm — runs from back bar to camera (trapezoid, wider at front)
+    var leftArmOuterX_back=tArmX_L, leftArmOuterX_front=tArmX_L;
+    var leftArmInnerX_back=tInnerL+20, leftArmInnerX_front=tInnerL;
+    // Top face of left arm
+    trapezoid(
+      leftArmOuterX_back, tBackY,
+      leftArmInnerX_back, tBackY,
+      leftArmInnerX_front, tFrontY-tThick,
+      leftArmOuterX_front, tFrontY-tThick,
+      tableHighlight, null
+    );
+    // Front face of left arm (thin edge facing camera)
+    trapezoid(
+      leftArmOuterX_front, tFrontY-tThick,
+      leftArmInnerX_front, tFrontY-tThick,
+      leftArmInnerX_front, tFrontY,
+      leftArmOuterX_front, tFrontY,
+      tableCol, '#2a1005'
+    );
+    // Gloss on left arm top
+    ctx.fillStyle=tableGloss;
+    ctx.beginPath();ctx.moveTo(leftArmOuterX_back+4,tBackY+2);ctx.lineTo(leftArmInnerX_back-4,tBackY+2);ctx.lineTo(leftArmInnerX_front-4,tFrontY-tThick-1);ctx.lineTo(leftArmOuterX_front+4,tFrontY-tThick-1);ctx.closePath();ctx.fill();
+    // Underside shadow left arm
+    ctx.fillStyle=tableShadow;
+    ctx.fillRect(leftArmOuterX_front, tFrontY, leftArmInnerX_front-leftArmOuterX_front, 6);
+
+    // Right arm — mirror
+    var rightArmOuterX_back=tArmX_R, rightArmOuterX_front=tArmX_R;
+    var rightArmInnerX_back=tInnerR-20, rightArmInnerX_front=tInnerR;
+    // Top face of right arm
+    trapezoid(
+      rightArmInnerX_back, tBackY,
+      rightArmOuterX_back, tBackY,
+      rightArmOuterX_front, tFrontY-tThick,
+      rightArmInnerX_front, tFrontY-tThick,
+      tableHighlight, null
+    );
+    // Front face of right arm
+    trapezoid(
+      rightArmInnerX_front, tFrontY-tThick,
+      rightArmOuterX_front, tFrontY-tThick,
+      rightArmOuterX_front, tFrontY,
+      rightArmInnerX_front, tFrontY,
+      tableCol, '#2a1005'
+    );
+    // Gloss on right arm
+    ctx.fillStyle=tableGloss;
+    ctx.beginPath();ctx.moveTo(rightArmInnerX_back+4,tBackY+2);ctx.lineTo(rightArmOuterX_back-4,tBackY+2);ctx.lineTo(rightArmOuterX_front-4,tFrontY-tThick-1);ctx.lineTo(rightArmInnerX_front+4,tFrontY-tThick-1);ctx.closePath();ctx.fill();
+    // Underside shadow right arm
+    ctx.fillStyle=tableShadow;
+    ctx.fillRect(rightArmInnerX_front, tFrontY, rightArmOuterX_front-rightArmInnerX_front, 6);
+
+    // Table legs — visible under front arms
+    ctx.fillStyle='#2a1005';
+    [[tArmX_L+8,tFrontY],[tInnerL-8,tFrontY],[tInnerR+8,tFrontY],[tArmX_R-8,tFrontY]].forEach(function(leg){
+      ctx.fillRect(leg[0]-3,leg[1],6,14);
+    });
+
+    // Notepads / laptops on table surface — tiny details
+    [[tArmX_L+20,tFrontY-tThick-2,'#fffef8'],[tArmX_L+45,tFrontY-tThick-2,'#e0e8f0'],
+     [tArmX_R-35,tFrontY-tThick-2,'#fffef8'],[tArmX_R-60,tFrontY-tThick-2,'#e0e8f0']].forEach(function(p){
+      ctx.fillStyle=p[2];ctx.fillRect(p[0],p[1]-6,18,6);
+      ctx.strokeStyle='rgba(0,0,0,0.15)';ctx.lineWidth=0.5;ctx.strokeRect(p[0],p[1]-6,18,6);
+    });
+
+    // ── Ambient light pool on floor inside U (carpet glow from windows) ────
+    var poolGrad=ctx.createRadialGradient(tMid,floor-10,10,tMid,floor-30,tInnerR-tMid);
+    poolGrad.addColorStop(0,'rgba(200,220,240,0.08)');poolGrad.addColorStop(1,'rgba(200,220,240,0)');
+    ctx.fillStyle=poolGrad;ctx.fillRect(tInnerL,tBackY+backBarH,tInnerR-tInnerL,floor-tBackY-backBarH);
   },
 
   _drawPlayground(ctx,W,H) {
