@@ -4,15 +4,15 @@ const Chat = {
   panel:         null,
   messagesEl:    null,
   inputEl:       null,
-  forwardIds:    [],   // all characters stepped forward
-  talkingId:     null, // who is currently selected to talk to
-  handRaisedIds: [],   // who wants to chime in
-  sharedHistory: [],   // shared conversation log [{role, content, speakerId}]
+  forwardIds:    [],
+  talkingId:     null,
+  handRaisedIds: [],
+  sharedHistory: [],
 
   init() {
-    this.panel     = document.getElementById('chat-panel');
+    this.panel      = document.getElementById('chat-panel');
     this.messagesEl = document.getElementById('chat-messages');
-    this.inputEl   = document.getElementById('chat-input');
+    this.inputEl    = document.getElementById('chat-input');
     document.getElementById('chat-close').addEventListener('click', function() { Chat.dismissAll(); World.render(); });
     document.getElementById('chat-send').addEventListener('click', function() { Chat.send(); });
     this.inputEl.addEventListener('keydown', function(e) { if (e.key === 'Enter') Chat.send(); });
@@ -25,7 +25,6 @@ const Chat = {
   },
 
   renderPanel() {
-    // Header: avatars of all forward characters, active one highlighted
     var header = document.getElementById('chat-header');
     header.innerHTML = '';
 
@@ -53,9 +52,9 @@ const Chat = {
       pill.appendChild(av);
 
       var nameSpan = document.createElement('span');
-      nameSpan.style.cssText = 'font-family:"Press Start 2P",monospace;font-size:6px;color:' +
+      nameSpan.style.cssText = 'font-family:"Press Start 2P",monospace;font-size:7px;color:' +
         (id === self.talkingId ? '#ffcc44' : '#88aaff') + ';';
-      nameSpan.textContent = member.name.split(' ')[0].substring(0,8);
+      nameSpan.textContent = member.name.split(' ')[0].substring(0,10);
       pill.appendChild(nameSpan);
 
       pill.addEventListener('click', function() { Chat.activateTalking(id); });
@@ -79,20 +78,22 @@ const Chat = {
     this.talkingId = id;
     this.renderPanel();
     World.render();
-    // Remove hand raise
     this.handRaisedIds = this.handRaisedIds.filter(function(x) { return x !== id; });
   },
 
   renderMessages() {
     this.messagesEl.innerHTML = '';
     if (!this.sharedHistory.length) {
-      this.appendSystem('everyone is forward — click a name to talk to them');
+      this.appendSystem('click a name above to talk to them');
       return;
     }
     this.sharedHistory.forEach(function(m) {
       var div = document.createElement('div');
       if (m.role === 'user') {
         div.className = 'msg user';
+        div.textContent = m.content;
+      } else if (m.role === 'system') {
+        div.className = 'msg system';
         div.textContent = m.content;
       } else {
         div.className = 'msg ai';
@@ -109,6 +110,7 @@ const Chat = {
     div.className = 'msg system';
     div.textContent = text;
     this.messagesEl.appendChild(div);
+    this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
   },
 
   async send() {
@@ -119,7 +121,6 @@ const Chat = {
     var member = App.state.team.find(function(m) { return m.id === Chat.talkingId; });
     if (!member) return;
 
-    // Add user message to shared history
     this.sharedHistory.push({ role: 'user', content: text, speakerId: null });
 
     var userDiv = document.createElement('div');
@@ -128,12 +129,8 @@ const Chat = {
     this.messagesEl.appendChild(userDiv);
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
 
-    // Get response from talkingId character
     await this._getResponse(member, text);
-
-    // After response, maybe other forward characters raise their hand
-    this._maybeRaiseHands(member.id, text);
-
+    this._maybeRaiseHands(member.id);
     Storage.cloudSave(App.state);
   },
 
@@ -144,22 +141,53 @@ const Chat = {
     this.messagesEl.appendChild(thinking);
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
 
-    // Build this character's history from sharedHistory
     var messages = this.sharedHistory
       .filter(function(m) { return m.role === 'user' || m.speakerId === member.id; })
-      .map(function(m) { return { role: m.role, content: m.content }; });
+      .map(function(m) { return { role: m.role === 'user' ? 'user' : 'assistant', content: m.content }; });
 
-    var roomCtx = (typeof ROOMS !== 'undefined' && ROOMS[World.currentRoom]) ? ROOMS[World.currentRoom].aiContext : '';
-    var othersForward = Chat.forwardIds.filter(function(id) { return id !== member.id; })
+    // ── System prompt ────────────────────────────────────────────────────────
+    var roomCtx = (typeof ROOMS !== 'undefined' && ROOMS[World.currentRoom])
+      ? ROOMS[World.currentRoom].aiContext : '';
+
+    // Full team roster so Claude can summon/dismiss by name
+    var teamRoster = App.state.team.map(function(m) {
+      var here = Chat.forwardIds.indexOf(m.id) !== -1;
+      return m.name + ' (' + (m.role||'team member') + ')' + (here ? ' — in conversation' : ' — not yet here');
+    }).join(', ');
+
+    var othersForward = Chat.forwardIds
+      .filter(function(id) { return id !== member.id; })
       .map(function(id) { var m = App.state.team.find(function(t) { return t.id === id; }); return m ? m.name : ''; })
       .filter(Boolean).join(', ');
-    var groupCtx = othersForward ? 'Also present in the conversation: ' + othersForward + '. You may reference them.' : '';
+    var groupCtx = othersForward ? 'Others currently in the conversation: ' + othersForward + '.' : '';
 
     var actionList = (typeof ACTIONS !== 'undefined') ? ACTIONS.join(', ') : '';
-    var actionCtx = actionList ? 'You can express yourself physically. At the START of your reply, optionally include one action tag like [ACTION:nod] — choose from: ' + actionList + '. Pick whichever fits your reaction. Leave it out if nothing fits.' : '';
-    var system = 'You are ' + member.name + ', a team member on Baz\'s team. Role: ' + (member.role || 'team member') +
-      '. Personality: ' + member.personality + '. ' + roomCtx + ' ' + groupCtx + ' ' + actionCtx +
-      ' Keep responses SHORT (2-3 sentences). Be in-character. Never break character.';
+    var actionCtx = actionList
+      ? 'At the START of your reply you may include one [ACTION:name] tag — choose from: ' + actionList + '. Leave it out if nothing fits.'
+      : '';
+
+    // Summon/dismiss instructions
+    var summonCtx = 'TEAM ROSTER: ' + teamRoster + '. ' +
+      'You can summon someone into the conversation by including [SUMMON:Name] in your reply — do this when their expertise is genuinely relevant. ' +
+      'You can dismiss someone with [DISMISS:Name] when they are done. ' +
+      'Use these sparingly and only when it truly makes sense.';
+
+    // Project briefing context
+    var briefingCtx = '';
+    if (App.state.briefing && App.state.briefing.trim()) {
+      briefingCtx = 'PROJECT CONTEXT (shared background for all team members): ' + App.state.briefing;
+    }
+
+    var system = [
+      'You are ' + member.name + ', a team member. Role: ' + (member.role || 'team member') + '.',
+      'Personality: ' + member.personality + '.',
+      roomCtx,
+      groupCtx,
+      briefingCtx,
+      summonCtx,
+      actionCtx,
+      'Keep responses SHORT (2-3 sentences). Stay in character. Never break character.',
+    ].filter(Boolean).join(' ');
 
     try {
       var resp = await fetch('https://script.google.com/macros/s/AKfycbxUtte8plGg9O0pPXeedpm9oKhXBndYHOMYRBWxhbHM26ZChBcbhnzBiv7x_zJPVGRq/exec', {
@@ -167,11 +195,56 @@ const Chat = {
         headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({ pin: App.pin, model: 'claude-sonnet-4-6', max_tokens: 1000, system: system, messages: messages })
       });
-      var data  = await resp.json();
+      var data = await resp.json();
       var rawReply = data.content && data.content[0] ? data.content[0].text : '...';
-      var actionMatch = rawReply.match(/\[ACTION:(\w+)\]/);
-      var reply = rawReply.replace(/\[ACTION:\w+\]\s*/,'').trim();
-      if (actionMatch) { World.playCharAction(member.id, actionMatch[1]); }
+
+      // ── Parse all tags from reply ──────────────────────────────────────────
+      var actionMatch  = rawReply.match(/\[ACTION:(\w+)\]/);
+      var summonMatch  = rawReply.match(/\[SUMMON:([^\]]+)\]/);
+      var dismissMatch = rawReply.match(/\[DISMISS:([^\]]+)\]/);
+
+      // Strip all tags from visible reply
+      var reply = rawReply
+        .replace(/\[ACTION:\w+\]\s*/g, '')
+        .replace(/\[SUMMON:[^\]]+\]\s*/g, '')
+        .replace(/\[DISMISS:[^\]]+\]\s*/g, '')
+        .trim();
+
+      // Execute action
+      if (actionMatch) World.playCharAction(member.id, actionMatch[1]);
+
+      // Execute summon
+      if (summonMatch) {
+        var summonName = summonMatch[1].trim();
+        var target = App.state.team.find(function(m) {
+          return m.name.toLowerCase().startsWith(summonName.toLowerCase());
+        });
+        if (target && Chat.forwardIds.indexOf(target.id) === -1) {
+          Chat.forwardIds.push(target.id);
+          this.sharedHistory.push({ role: 'system', content: '→ ' + target.name + ' joins the conversation.', speakerId: null });
+          World.render();
+          this.appendSystem('→ ' + target.name + ' joins the conversation.');
+        }
+      }
+
+      // Execute dismiss
+      if (dismissMatch) {
+        var dismissName = dismissMatch[1].trim();
+        var dismissTarget = App.state.team.find(function(m) {
+          return m.name.toLowerCase().startsWith(dismissName.toLowerCase());
+        });
+        if (dismissTarget && dismissTarget.id !== member.id) {
+          var idx = Chat.forwardIds.indexOf(dismissTarget.id);
+          if (idx !== -1) {
+            Chat.forwardIds.splice(idx, 1);
+            Chat.handRaisedIds = Chat.handRaisedIds.filter(function(x) { return x !== dismissTarget.id; });
+            if (Chat.talkingId === dismissTarget.id) Chat.talkingId = Chat.forwardIds.length ? Chat.forwardIds[0] : member.id;
+            this.sharedHistory.push({ role: 'system', content: '← ' + dismissTarget.name + ' steps back.', speakerId: null });
+            World.render();
+            this.appendSystem('← ' + dismissTarget.name + ' steps back.');
+          }
+        }
+      }
 
       this.sharedHistory.push({ role: 'assistant', content: reply, speakerId: member.id });
       thinking.remove();
@@ -182,36 +255,34 @@ const Chat = {
       this.messagesEl.appendChild(div);
       this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
 
-      // Persist per-character history too
       if (!App.state.chatHistory[member.id]) App.state.chatHistory[member.id] = [];
-      App.state.chatHistory[member.id].push({ role: 'user', content: messages[messages.length-1] ? messages[messages.length-1].content : '' });
-      App.state.chatHistory[member.id].push({ role: 'assistant', content: reply });
+      App.state.chatHistory[member.id].push({ role: 'user',      content: userText });
+      App.state.chatHistory[member.id].push({ role: 'assistant', content: reply    });
+
+      // Re-render header in case forwardIds changed
+      this.renderPanel();
 
     } catch(e) {
       thinking.remove();
       var err = document.createElement('div');
       err.className = 'msg ai';
-      err.innerHTML = '<div class="speaker">ERROR</div>Connection failed.';
+      err.innerHTML = '<div class="speaker">ERROR</div>Connection failed — check your PIN and connection.';
       this.messagesEl.appendChild(err);
     }
   },
 
-  _maybeRaiseHands(responderId, userText) {
-    // Each other forward character has a chance to raise their hand based on personality
+  _maybeRaiseHands(responderId) {
     var self = this;
     var others = this.forwardIds.filter(function(id) { return id !== responderId; });
     others.forEach(function(id) {
-      if (self.handRaisedIds.indexOf(id) !== -1) return; // already raised
+      if (self.handRaisedIds.indexOf(id) !== -1) return;
       var member = App.state.team.find(function(m) { return m.id === id; });
       if (!member) return;
-      // Personalities that tend to chime in
       var chatty = ['enthusiastic','creative','naturally','chaotically','big-picture'];
       var wantsToTalk = chatty.some(function(word) { return member.personality.indexOf(word) !== -1; });
-      // 40% chance for chatty, 20% for others
-      var chance = wantsToTalk ? 0.4 : 0.2;
-      if (Math.random() < chance) {
+      if (Math.random() < (wantsToTalk ? 0.4 : 0.2)) {
         self.handRaisedIds.push(id);
-        World.render(); // show raised hand
+        World.render();
       }
     });
   },
@@ -225,12 +296,15 @@ const Chat = {
     App.setStatus('click a character to chat');
   },
 
-  // Legacy compat
   close() { this.dismissAll(); },
-  get currentId() { return this.talkingId; },
+  get currentId()  { return this.talkingId; },
   set currentId(v) { this.talkingId = v; },
 
   _esc(t) {
-    return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+    return String(t)
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/\n/g,'<br>');
   }
 };
