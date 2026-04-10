@@ -21,7 +21,8 @@ const World = {
     this._buildStars();
     this._buildBgCanvas();
     WorldObjects.init();
-    window.addEventListener('resize', function() { World._buildBgCanvas(); World.render(); WorldObjects.resize(); });
+    Puzzles.init();
+    window.addEventListener('resize', function() { World._buildBgCanvas(); World.render(); WorldObjects.resize(); Puzzles.resize(); });
     this.container.addEventListener('click', function(e) {
       var t = e.target;
       if (t === World.container || t.id === 'bg-canvas' ||
@@ -38,6 +39,7 @@ const World = {
     this.currentRoom = roomId;
     Chat.dismissAll();
     WorldObjects.onRoomSwitch();
+    Puzzles.onRoomSwitch();
     this._buildFloor(); this._buildBgCanvas();
     this.render();
     App.setStatus('Entered ' + ROOMS[roomId].statusLabel);
