@@ -27,15 +27,24 @@ const TileMap = (function() {
 
   // ── Init ───────────────────────────────────────────────────────────────────
   function init() {
+    // Get or create the canvas
     _canvas = document.getElementById('world-canvas');
     if (!_canvas) {
       _canvas = document.createElement('canvas');
       _canvas.id = 'world-canvas';
-      _canvas.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;image-rendering:pixelated;cursor:crosshair;';
-      document.getElementById('world-container').appendChild(_canvas);
+      _canvas.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;image-rendering:pixelated;cursor:crosshair;z-index:3;';
+      var wc = document.getElementById('world-container');
+      if (wc) wc.insertBefore(_canvas, wc.firstChild);
+    } else {
+      // Make sure it's visible and correctly layered
+      _canvas.style.zIndex = '3';
+      _canvas.style.display = 'block';
     }
     _resize();
     _ctx = _canvas.getContext('2d');
+    // Force a background colour so we know it's rendering
+    _ctx.fillStyle = '#1a2a10';
+    _ctx.fillRect(0, 0, _canvas.width, _canvas.height);
 
     // Click to move player
     _canvas.addEventListener('click', function(e) {
@@ -245,6 +254,7 @@ const TileMap = (function() {
 
   // ── Draw avatars ───────────────────────────────────────────────────────────
   function _drawAvatars() {
+    if (!App || !App.state || !App.state.team) return;
     var team = App.state.team;
     // Collect all entities on current map sorted by Y (painter's algorithm)
     var entities = [];
@@ -327,6 +337,7 @@ const TileMap = (function() {
 
   // ── Main render ────────────────────────────────────────────────────────────
   function _render() {
+    try {
     if (!_ctx || !_canvas) return;
     var map = getMap(_currentMap);
     if (!map) return;
@@ -382,16 +393,14 @@ const TileMap = (function() {
       _ctx.textAlign='left';
       _ctx.fillText(meta.label.toUpperCase(), 14, 20);
     }
-
-    // Library locked hint
-    if (_currentMap === 'outdoor') {
-      _ctx.fillStyle='rgba(255,255,255,0)'; // placeholder
-    }
+    } catch(e) { console.warn('TileMap render error:', e); }
   }
 
   // ── Movement tick ──────────────────────────────────────────────────────────
   function _tick() {
     _t++;
+    // Don't tick until App is ready
+    if (!App || !App.state) { _render(); return; }
 
     // Step player path
     if (_playerPath.length > 0 && _t % 4 === 0) {
@@ -413,7 +422,7 @@ const TileMap = (function() {
     }
 
     // Step avatar paths
-    var team = App.state.team;
+    var team = (App && App.state && App.state.team) ? App.state.team : [];
     team.forEach(function(m) {
       var s = TopDown.avatarStates[m.id];
       if (!s) return;
