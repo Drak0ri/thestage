@@ -16,6 +16,7 @@ const TileMap = (function() {
   var _moveTimer  = null;
   var _t          = 0;
   var _transitioning = false;
+  var _transitionCooldown = false;
   var _transAlpha = 0;
 
   // Player tile position (the human user's cursor avatar)
@@ -416,7 +417,7 @@ const TileMap = (function() {
       if (_player.walkTimer >= 2) { _player.walkTimer=0; _player.walkFrame=_player.walkFrame===0?1:0; }
 
       // Check player threshold
-      if (!_transitioning) _checkPlayerThreshold();
+      if (!_transitioning && !_transitionCooldown) _checkPlayerThreshold();
     } else if (_playerPath.length === 0) {
       _player.moving = false;
     }
@@ -429,7 +430,7 @@ const TileMap = (function() {
       if (s.path && s.path.length > 0 && _t % 5 === 0) {
         TopDown.stepPath(s);
         // Check avatar threshold
-        if (!_transitioning) _checkAvatarThreshold(s);
+        if (!_transitioning && !_transitionCooldown) _checkAvatarThreshold(s);
       }
       TopDown.tickWalkFrame(s);
       // Idle wander for avatars on current map
@@ -466,42 +467,44 @@ const TileMap = (function() {
 
   // ── Fade transition ────────────────────────────────────────────────────────
   function _doTransition(playerState, avatarState, door) {
-    if (_transitioning) return;
+    if (_transitioning || _transitionCooldown) return;
     _transitioning = true;
+    _transitionCooldown = true;
 
     // Fade to black
     var fadeIn = setInterval(function() {
       _transAlpha = Math.min(1, _transAlpha + 0.08);
       if (_transAlpha >= 1) {
         clearInterval(fadeIn);
-        // Switch map
-        var newMap = door.toMap;
-        _currentMap = newMap;
-        if (playerState) {
-          _player.x = door.spawnX; _player.y = door.spawnY;
-          _player.facing = door.facing; _player.map = newMap;
-          _playerPath = [];
-        }
-        if (avatarState) {
-          TopDown.teleport(avatarState.id, newMap, door.spawnX, door.spawnY, door.facing);
-        }
-        // Sync room context for chat
-        if (MAP_META[newMap]) {
-          World.currentMap = newMap;
-        }
-        App.setStatus('Entered ' + (MAP_META[newMap]||{label:newMap}).label);
-        // Snap camera
-        var focus = playerState ? {x:door.spawnX,y:door.spawnY} : {x:door.spawnX,y:door.spawnY};
-        _camera.x = focus.x*TSIZE - _canvas.width/2 + TSIZE/2;
-        _camera.y = focus.y*TSIZE - _canvas.height/2 + TSIZE/2;
-        _camera.tx = _camera.x; _camera.ty = _camera.y;
+        try {
+          var newMap = door.toMap;
+          _currentMap = newMap;
+          if (playerState) {
+            _player.x = door.spawnX; _player.y = door.spawnY;
+            _player.facing = door.facing; _player.map = newMap;
+            _playerPath = [];
+          }
+          if (avatarState) {
+            TopDown.teleport(avatarState.id, newMap, door.spawnX, door.spawnY, door.facing);
+          }
+          if (MAP_META[newMap]) World.currentMap = newMap;
+          App.setStatus('Entered ' + (MAP_META[newMap]||{label:newMap}).label);
+          // Snap camera to spawn point
+          var fx = playerState ? door.spawnX : door.spawnX;
+          var fy = playerState ? door.spawnY : door.spawnY;
+          _camera.x = Math.max(0, fx*TSIZE - _canvas.width/2 + TSIZE/2);
+          _camera.y = Math.max(0, fy*TSIZE - _canvas.height/2 + TSIZE/2);
+          _camera.tx = _camera.x; _camera.ty = _camera.y;
+        } catch(e) { console.error('Transition error:', e); }
 
-        // Fade back out
+        // Fade back out — always runs even on error
         var fadeOut = setInterval(function() {
           _transAlpha = Math.max(0, _transAlpha - 0.06);
           if (_transAlpha <= 0) {
             clearInterval(fadeOut);
             _transitioning = false;
+            // Brief cooldown so player does not immediately re-trigger
+            setTimeout(function(){ _transitionCooldown = false; }, 800);
           }
         }, 30);
       }
