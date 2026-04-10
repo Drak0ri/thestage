@@ -180,82 +180,89 @@ const World = {
     var state=this.wanderState[id]||{x:baseX,targetX:baseX,dir:1,moving:false,base:baseX};
     state.base=baseX;
     this.wanderState[id]=state;
-    var range=60;
 
-    // 4-phase walk cycle: contact-A(0), passing(1), contact-B(2), passing(3)
-    // Matches classic pixel art walk cycle research — contact frames bob down 1px,
-    // passing frames are at neutral height. ~150ms per phase = natural walking pace.
+    // Walk animation state — kept outside the timer so it persists across ticks
     var walkPhase=0;
-    var WALK_MS=150; // ms per animation frame — Shovel Knight pacing
-    var MOVE_MS=16;  // physics tick rate (smooth position update, ~60fps feel)
+    var WALK_MS=160;   // ms per animation frame (4 frames = ~640ms per full cycle)
+    var MOVE_MS=16;    // physics tick ~60fps
     var msSinceLastFrame=0;
     var lastTime=Date.now();
 
-    var pickTarget=function() {
-      var offset=(Math.random()-0.5)*range*2;
-      state.targetX=Math.max(20,Math.min(W-60,state.base+offset));
-      state.dir=state.targetX>state.x?1:-1;
-      state.moving=true;
-    };
+    // Speed chosen so a 120px journey takes ~2.5 walk cycles = feels natural
+    // 120px / (0.06 px/ms) = 2000ms, 4 frames * 160ms = 640ms per cycle => ~3 cycles
+    var SPEED=0.06; // px per ms
 
-    var redrawWalk=function() {
+    var drawFront=function() {
       var ctx2=canvas.getContext('2d');
       ctx2.clearRect(0,0,canvas.width,canvas.height);
       ctx2.save(); ctx2.scale(RENDER_SCALE,RENDER_SCALE);
-      // phases 0 and 2 are contact (foot plant) — bob body down 1px for weight
-      var isContact=(walkPhase===0||walkPhase===2);
-      drawChar(ctx2,pal,0,{
-        facing:'side',
-        walkPhase:walkPhase,
-        flipX:state.dir<0,
-        offsetY:isContact?1:0
-      });
+      drawChar(ctx2,pal,0,{facing:'front'});
       ctx2.restore();
     };
 
-    var pauseTimer=setTimeout(function(){
-      pickTarget();
-      var moveTimer=setInterval(function(){
-        var wrapper=document.getElementById('char-'+id);
-        if (!wrapper){clearInterval(moveTimer);return;}
-        if (state.moving) {
-          var now=Date.now();
-          var dt=now-lastTime;
-          lastTime=now;
-          // Advance position smoothly every tick
-          var speed=0.18; // px per ms — gentle idle wander pace
-          var diff=state.targetX-state.x;
-          if (Math.abs(diff)<2) {
-            state.x=state.targetX;
-            state.moving=false;
-            walkPhase=0;
-            msSinceLastFrame=0;
-            var stillTimer=setTimeout(function(){
-              if (document.getElementById('char-'+id)) pickTarget();
-            }, 1500+Math.random()*2000);
-            World.animTimers[id+'_still']=stillTimer;
-            // Turn front on stop
-            var ctx2=canvas.getContext('2d');
-            ctx2.clearRect(0,0,canvas.width,canvas.height);
-            ctx2.save();ctx2.scale(RENDER_SCALE,RENDER_SCALE);
-            drawChar(ctx2,pal,0,{facing:'front'});
-            ctx2.restore();
-          } else {
-            state.x+=Math.min(Math.abs(diff), speed*dt)*state.dir;
-            wrapper.style.left=Math.round(state.x)+'px';
-            // Advance walk frame on its own slower timer
-            msSinceLastFrame+=dt;
-            if (msSinceLastFrame>=WALK_MS) {
-              msSinceLastFrame=0;
-              walkPhase=(walkPhase+1)%4;
-              redrawWalk();
-            }
+    var drawSide=function() {
+      var ctx2=canvas.getContext('2d');
+      ctx2.clearRect(0,0,canvas.width,canvas.height);
+      ctx2.save(); ctx2.scale(RENDER_SCALE,RENDER_SCALE);
+      var isContact=(walkPhase===0||walkPhase===2);
+      drawChar(ctx2,pal,0,{facing:'side',walkPhase:walkPhase,flipX:state.dir<0,offsetY:isContact?1:0});
+      ctx2.restore();
+    };
+
+    var pickTarget=function() {
+      // Range big enough that walks last multiple full animation cycles
+      var range=80+Math.random()*60; // 80–140px
+      var offset=(Math.random()<0.5?-1:1)*range;
+      state.targetX=Math.max(30,Math.min(W-70,state.base+offset));
+      state.dir=state.targetX>state.x?1:-1;
+      state.moving=true;
+      // Draw side immediately so the first frame isn't a front-facing flash
+      walkPhase=0; msSinceLastFrame=0;
+      drawSide();
+    };
+
+    // Draw initial front pose (character starts standing)
+    drawFront();
+
+    var moveTimer=setInterval(function(){
+      var wrapper=document.getElementById('char-'+id);
+      if (!wrapper){clearInterval(moveTimer);return;}
+
+      var now=Date.now();
+      var dt=Math.min(now-lastTime, 100); // cap dt to avoid huge jumps after tab switch
+      lastTime=now;
+
+      if (state.moving) {
+        var diff=state.targetX-state.x;
+        if (Math.abs(diff)<1) {
+          // Arrived — stop, face front, pause then wander again
+          state.x=state.targetX;
+          state.moving=false;
+          wrapper.style.left=Math.round(state.x)+'px';
+          drawFront();
+          var stillTimer=setTimeout(function(){
+            if (document.getElementById('char-'+id)) pickTarget();
+          }, 2000+Math.random()*2500);
+          World.animTimers[id+'_still']=stillTimer;
+        } else {
+          state.x+=Math.min(Math.abs(diff), SPEED*dt)*state.dir;
+          wrapper.style.left=Math.round(state.x)+'px';
+          // Advance walk frame on its own slower clock
+          msSinceLastFrame+=dt;
+          if (msSinceLastFrame>=WALK_MS) {
+            msSinceLastFrame-=WALK_MS; // subtract rather than reset, keeps timing accurate
+            walkPhase=(walkPhase+1)%4;
+            drawSide();
           }
-          lastTime=now;
         }
-      },MOVE_MS);
-      World.animTimers[id+'_move']=moveTimer;
-    }, 500+Math.random()*2000);
+      }
+    }, MOVE_MS);
+    World.animTimers[id+'_move']=moveTimer;
+
+    // Initial pause before first wander (staggered so not all chars move at once)
+    var pauseTimer=setTimeout(function(){
+      if (document.getElementById('char-'+id)) pickTarget();
+    }, 800+Math.random()*2000);
     World.animTimers[id+'_pause']=pauseTimer;
   },
 
