@@ -16,7 +16,7 @@
   --border: #3a3870;
   --header-h: 52px;
   --world-h: 320px;
-  --chat-h: 320px;
+  --chat-h: 360px;
   --radius: 4px;
 }
 
@@ -197,8 +197,8 @@ body {
 }
 #chat-avatar { image-rendering: pixelated; flex-shrink: 0; }
 #chat-meta { flex: 1; display: flex; flex-direction: column; gap: 4px; }
-#chat-name { font-size: 9px; color: var(--gold); }
-#chat-role { font-size: 6px; color: var(--text-muted); }
+#chat-name { font-size: 11px; color: var(--gold); }
+#chat-role { font-size: 8px; color: var(--text-muted); }
 
 #chat-messages {
   flex: 1;
@@ -216,7 +216,7 @@ body {
 .msg {
   max-width: 78%;
   line-height: 1.7;
-  font-size: 7px;
+  font-size: 10px;
   padding: 8px 12px;
   border-radius: var(--radius);
   animation: fadeUp 0.2s ease;
@@ -236,14 +236,14 @@ body {
   border-radius: 0 var(--radius) var(--radius) var(--radius);
 }
 .msg.ai .speaker {
-  font-size: 6px;
+  font-size: 8px;
   color: var(--gold);
   margin-bottom: 5px;
 }
 .msg.thinking { opacity: 0.5; animation: blink 1s infinite, fadeUp 0.2s ease; }
 .msg.system {
   align-self: center;
-  font-size: 6px;
+  font-size: 9px;
   color: var(--text-muted);
   background: none;
   border: none;
@@ -261,7 +261,7 @@ body {
 #chat-input {
   flex: 1;
   font-family: 'Press Start 2P', monospace;
-  font-size: 7px;
+  font-size: 10px;
   background: var(--bg2);
   color: var(--text-bright);
   border: 1.5px solid var(--border);
@@ -347,7 +347,7 @@ body {
 @media (max-width: 520px) {
   #subtitle { display: none; }
   .px-btn { padding: 6px 8px; font-size: 6px; }
-  :root { --world-h: 260px; --chat-h: 280px; }
+  :root { --world-h: 240px; --chat-h: 300px; }
 }
 
 /* ── LARGE ACTIVE CHARACTER ─────────────────────── */
