@@ -40,6 +40,12 @@ const App = {
       btn.addEventListener('click', function() { World.switchRoom(btn.dataset.room); });
     });
 
+    document.getElementById('btn-briefing').addEventListener('click', () => {
+      document.getElementById('briefing-modal').classList.add('open');
+      document.getElementById('briefing-text').value = App.state.briefing || '';
+      document.getElementById('briefing-text').focus();
+    });
+
     document.getElementById('btn-add').addEventListener('click', () => {
       document.getElementById('add-modal').classList.add('open');
       document.getElementById('new-name').focus();
@@ -78,6 +84,21 @@ const App = {
     });
 
     document.getElementById('add-confirm').addEventListener('click', () => this._addMember());
+
+    document.getElementById('briefing-cancel').addEventListener('click', () => {
+      document.getElementById('briefing-modal').classList.remove('open');
+    });
+    document.getElementById('briefing-modal').addEventListener('click', e => {
+      if (e.target === document.getElementById('briefing-modal'))
+        document.getElementById('briefing-modal').classList.remove('open');
+    });
+    document.getElementById('briefing-save').addEventListener('click', () => {
+      App.state.briefing = document.getElementById('briefing-text').value.trim();
+      Storage.cloudSave(App.state);
+      document.getElementById('briefing-modal').classList.remove('open');
+      var preview = App.state.briefing ? App.state.briefing.substring(0,40)+'...' : 'none';
+      App.setStatus('Project briefing saved — all characters will now share this context.');
+    });
 
     document.getElementById('new-name').addEventListener('keydown', e => {
       if (e.key === 'Enter') document.getElementById('new-role').focus();
