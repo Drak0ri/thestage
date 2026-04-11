@@ -561,13 +561,22 @@ const World = {
   _calcPositions(ids,W) {
     var count = ids.length;
     if (count === 0) return [];
+    // Account for roster drawer width if open
+    var drawerOpen = document.getElementById('roster-drawer') &&
+                     document.getElementById('roster-drawer').classList.contains('open');
+    var effectiveW = drawerOpen ? Math.max(W - 220, 200) : W;
+    var margin = Math.max(40, Math.round(effectiveW * 0.08));
+    var usable  = effectiveW - margin * 2;
     if (this.meetingMode) {
-      var sp=Math.min(60,Math.floor(W*0.6/(count+1)));
-      return Array.from({length:count},function(_,i){return Math.round(W/2+(i-(count-1)/2)*sp-24);});
+      var sp = Math.min(60, Math.floor(effectiveW * 0.6 / (count + 1)));
+      return Array.from({length:count}, function(_,i) {
+        return Math.round(effectiveW/2 + (i-(count-1)/2)*sp - 24);
+      });
     }
-    var margin=80,usable=W-margin*2;
-    if (count===1) return [Math.round(W/2-24)];
-    return Array.from({length:count},function(_,i){return Math.round(margin+(usable/(count-1))*i-24);});
+    if (count === 1) return [Math.round(effectiveW/2 - 24)];
+    return Array.from({length:count}, function(_,i) {
+      return Math.round(margin + (usable/(count-1))*i);
+    });
   },
 
   _clearTimers() {
