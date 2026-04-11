@@ -370,7 +370,11 @@ const World = {
       c.style.cssText = 'width:' + displayW + 'px;height:' + displayH + 'px;image-rendering:pixelated;display:block;';
       var ctx = c.getContext('2d');
       ctx.setTransform(RENDER_SCALE, 0, 0, RENDER_SCALE, 0, 0);
-      drawChar(ctx, pal, isTalking ? 3 : 0, { facing: 'front' });
+      if (isTalking) {
+        drawChar(ctx, pal, 3, { facing: 'front' });
+      } else {
+        drawChar(ctx, pal, 0, { facing: 'side', walkPhase: 1, flipX: false, offsetY: 0 });
+      }
 
       // Wrapper — id used by _startWander to find and move the element
       var wrapper = document.createElement('div');
@@ -433,17 +437,19 @@ const World = {
     // 120px / (0.06 px/ms) = 2000ms, 4 frames * 160ms = 640ms per cycle => ~3 cycles
     var SPEED=0.06; // px per ms
 
-    var drawFront=function() {
+    // Wandering chars always stay in side-view — no front/side transitions ever.
+    // Only the active talker faces front (handled in render()).
+    var drawIdle=function() {
       var ctx2=canvas.getContext('2d');
-      ctx2.setTransform(1,0,0,1,0,0); // reset transform before clearing
+      ctx2.setTransform(1,0,0,1,0,0);
       ctx2.clearRect(0,0,canvas.width,canvas.height);
       ctx2.setTransform(RENDER_SCALE,0,0,RENDER_SCALE,0,0);
-      drawChar(ctx2,pal,0,{facing:'front'});
+      drawChar(ctx2,pal,0,{facing:'side',walkPhase:1,flipX:state.dir<0,offsetY:0});
     };
 
-    var drawSide=function() {
+    var drawWalk=function() {
       var ctx2=canvas.getContext('2d');
-      ctx2.setTransform(1,0,0,1,0,0); // reset before clearing
+      ctx2.setTransform(1,0,0,1,0,0);
       ctx2.clearRect(0,0,canvas.width,canvas.height);
       ctx2.setTransform(RENDER_SCALE,0,0,RENDER_SCALE,0,0);
       var isContact=(walkPhase===0||walkPhase===2);
@@ -457,43 +463,37 @@ const World = {
       state.dir=state.targetX>state.x?1:-1;
       state.moving=true;
       walkPhase=0; msSinceLastFrame=0;
-      // Don't draw side yet — wait until first move tick so no stationary side-flash
     };
 
-    // Draw initial front pose (character starts standing)
-    drawFront();
+    drawIdle();
 
     var moveTimer=setInterval(function(){
       var wrapper=document.getElementById('char-'+id);
       if (!wrapper){clearInterval(moveTimer);return;}
 
       var now=Date.now();
-      var dt=Math.min(now-lastTime, 100); // cap dt to avoid huge jumps after tab switch
+      var dt=Math.min(now-lastTime, 100);
       lastTime=now;
 
       if (state.moving) {
         var diff=state.targetX-state.x;
         if (Math.abs(diff)<1) {
-          // Arrived — stop, face front, pause then wander again
           state.x=state.targetX;
           state.moving=false;
           wrapper.style.left=Math.round(state.x)+'px';
-          drawFront();
+          drawIdle();
           var stillTimer=setTimeout(function(){
             if (document.getElementById('char-'+id)) pickTarget();
-          }, 2000+Math.random()*2500);
+          }, 1500+Math.random()*2000);
           World.animTimers[id+'_still']=stillTimer;
         } else {
           state.x+=Math.min(Math.abs(diff), SPEED*dt)*state.dir;
           wrapper.style.left=Math.round(state.x)+'px';
-          // Draw side on very first tick of movement
-          if (msSinceLastFrame===0) drawSide();
-          // Advance walk frame on its own slower clock
           msSinceLastFrame+=dt;
           if (msSinceLastFrame>=WALK_MS) {
-            msSinceLastFrame-=WALK_MS; // subtract rather than reset, keeps timing accurate
+            msSinceLastFrame-=WALK_MS;
             walkPhase=(walkPhase+1)%4;
-            drawSide();
+            drawWalk();
           }
         }
       }
