@@ -28,7 +28,8 @@ const World = {
           t.classList.contains('floor-tile') || t.id === 'stars-layer' ||
           t.id === 'world-hud' || t.id === 'status-bar' ||
           t.id === 'objects-canvas' || t.id === 'chars-layer') {
-        Chat.dismissAll(); World.render();
+        // Close the chat panel but leave everyone on stage
+        Chat.closePanel();
       }
     });
   },
@@ -509,7 +510,36 @@ const World = {
     if (typeof Roster !== 'undefined') Roster.render();
   },
 
-  deselectAll() { document.querySelectorAll('.character').forEach(function(c){c.classList.remove('selected');}); },
+  deselectAll() { document.querySelectorAll('.character').forEach(function(c){c.classList.remove('selected');}); if (typeof Roster!=='undefined') Roster.render(); },
+
+  // Called by roster tile — toggles a member on/off stage
+  toggleStage(id) {
+    var idx = Chat.forwardIds.indexOf(id);
+    if (idx !== -1) {
+      // Remove from stage
+      Chat.forwardIds.splice(idx, 1);
+      Chat.handRaisedIds = Chat.handRaisedIds.filter(function(x){ return x !== id; });
+      if (Chat.talkingId === id) {
+        Chat.talkingId = Chat.forwardIds.length ? Chat.forwardIds[0] : null;
+      }
+      if (Chat.forwardIds.length === 0) {
+        Chat.closePanel();
+      } else {
+        Chat.renderPanel();
+      }
+    } else {
+      // Add to stage
+      Chat.forwardIds.push(id);
+      if (!Chat.talkingId) Chat.talkingId = id;
+      Chat.openPanel();
+    }
+    Chat._saveStage();
+    World.render();
+    App.setStatus(Chat.forwardIds.length
+      ? Chat.forwardIds.length + ' on stage'
+      : 'stage is empty — use TEAM to summon someone');
+    if (typeof Roster !== 'undefined') Roster.render();
+  },
 
   _calcPositions(count,W) {
     if (this.meetingMode) {
