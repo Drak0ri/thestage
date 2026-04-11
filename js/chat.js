@@ -17,15 +17,13 @@ const Chat = {
     document.getElementById('chat-close').addEventListener('click', function() { Chat.dismissAll(); World.render(); });
     document.getElementById('chat-send').addEventListener('click', function() { Chat.send(); });
     this.inputEl.addEventListener('keydown', function(e) { if (e.key === 'Enter') Chat.send(); });
-    // Restore previous stage selection from saved state
-    this._restoreStage();
   },
 
   // Persist who is on stage so it survives refresh/reopen
   _saveStage() {
     if (!App || !App.state) return;
-    App.state.stageIds   = this.forwardIds.slice();
-    App.state.talkingId  = this.talkingId;
+    App.state.stageIds        = this.forwardIds.slice();
+    App.state.stageTalkingId  = this.talkingId;
     Storage.cloudSave(App.state);
   },
 
@@ -42,8 +40,8 @@ const Chat = {
     if (!validIds.length) return;
     this.forwardIds = validIds;
     // Restore talkingId if still valid
-    if (App.state.talkingId && validIds.indexOf(App.state.talkingId) !== -1) {
-      this.talkingId = App.state.talkingId;
+    if (App.state.stageTalkingId && validIds.indexOf(App.state.stageTalkingId) !== -1) {
+      this.talkingId = App.state.stageTalkingId;
     } else {
       this.talkingId = validIds[0];
     }
