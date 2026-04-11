@@ -450,15 +450,13 @@ const World = {
     };
 
     var pickTarget=function() {
-      // Range big enough that walks last multiple full animation cycles
-      var range=80+Math.random()*60; // 80–140px
+      var range=80+Math.random()*60;
       var offset=(Math.random()<0.5?-1:1)*range;
       state.targetX=Math.max(30,Math.min(W-70,state.base+offset));
       state.dir=state.targetX>state.x?1:-1;
       state.moving=true;
-      // Draw side immediately so the first frame isn't a front-facing flash
       walkPhase=0; msSinceLastFrame=0;
-      drawSide();
+      // Don't draw side yet — wait until first move tick so no stationary side-flash
     };
 
     // Draw initial front pose (character starts standing)
@@ -487,6 +485,8 @@ const World = {
         } else {
           state.x+=Math.min(Math.abs(diff), SPEED*dt)*state.dir;
           wrapper.style.left=Math.round(state.x)+'px';
+          // Draw side on very first tick of movement
+          if (msSinceLastFrame===0) drawSide();
           // Advance walk frame on its own slower clock
           msSinceLastFrame+=dt;
           if (msSinceLastFrame>=WALK_MS) {
