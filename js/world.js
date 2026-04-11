@@ -327,6 +327,8 @@ const World = {
 
     team.forEach(function(member,i) {
       var isForward   = forwardIds.indexOf(member.id)!==-1;
+      // If some chars are on stage and this one isn't — skip entirely (not visible, saves resources)
+      if (forwardIds.length > 0 && !isForward) return;
       var isTalking   = Chat.talkingId===member.id;
       var isHandRaised= Chat.handRaisedIds.indexOf(member.id)!==-1;
       var pal         = PALETTES[member.colorIdx%PALETTES.length];
@@ -356,7 +358,7 @@ const World = {
       var wrapper=document.createElement('div');
       wrapper.className='character'+(isForward?' selected':'');
       wrapper.id='char-'+member.id;
-      wrapper.style.cssText='position:absolute;left:'+wx+'px;bottom:'+FLOOR_H+'px;width:'+displayW+'px;height:'+displayH+'px;z-index:'+(isForward?20:10)+';opacity:'+(!isForward&&forwardIds.length>0?0.35:1)+';transition:opacity 0.3s ease;overflow:visible;cursor:pointer;';
+      wrapper.style.cssText='position:absolute;left:'+wx+'px;bottom:'+FLOOR_H+'px;width:'+displayW+'px;height:'+displayH+'px;z-index:'+(isForward?20:10)+';opacity:1;transition:opacity 0.3s ease;overflow:visible;cursor:pointer;';
       wrapper.appendChild(c);
 
       var nameEl=document.createElement('div');
