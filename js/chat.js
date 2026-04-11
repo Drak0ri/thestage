@@ -409,7 +409,7 @@ const Chat = {
       if (self.handRaisedIds.indexOf(id) !== -1) return;
       var member = App.state.team.find(function(m) { return m.id === id; });
       if (!member) return;
-      var chatty = ['enthusiastic','creative','naturally','chaotically','big-picture'];
+      var chatty = ['enthusiastic','creative','chaotically','big-picture'];
       var wantsToTalk = chatty.some(function(word) { return member.personality.indexOf(word) !== -1; });
       if (Math.random() < (wantsToTalk ? 0.4 : 0.2)) {
         self.handRaisedIds.push(id);
