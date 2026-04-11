@@ -327,61 +327,74 @@ const World = {
     var basePositions=this._calcPositions(team.length,W);
 
     team.forEach(function(member,i) {
-      var isForward   = forwardIds.indexOf(member.id)!==-1;
-      // Only render characters explicitly on stage — roster is the gate
+      var isForward    = forwardIds.indexOf(member.id) !== -1;
+      // Only render characters that are on stage (in forwardIds)
       if (!isForward) return;
-      var isTalking   = Chat.talkingId===member.id;
-      var isHandRaised= Chat.handRaisedIds.indexOf(member.id)!==-1;
-      var pal         = PALETTES[member.colorIdx%PALETTES.length];
-      var displayScale= isForward?ACTIVE_PX:IDLE_PX;
-      var displayW    = Math.round(48*displayScale);
-      var displayH    = Math.round(72*displayScale);
 
-      // Wander state
+      var isTalking    = Chat.talkingId === member.id;
+      var isHandRaised = Chat.handRaisedIds.indexOf(member.id) !== -1;
+      var pal          = PALETTES[member.colorIdx % PALETTES.length];
+      var panelOpen    = Chat.panel && Chat.panel.classList.contains('open');
+
+      // Scale: active (talking) slightly larger, others normal
+      var displayScale = isTalking ? ACTIVE_PX : IDLE_PX;
+      var displayW     = Math.round(48 * displayScale);
+      var displayH     = Math.round(72 * displayScale);
+
+      // Wander state — all stage chars wander when panel is closed,
+      // the active talker faces front and stays still
       if (!World.wanderState[member.id]) {
-        World.wanderState[member.id]={x:basePositions[i],targetX:basePositions[i],dir:1,moving:false,base:basePositions[i]};
+        World.wanderState[member.id] = {
+          x: basePositions[i], targetX: basePositions[i],
+          dir: 1, moving: false, base: basePositions[i]
+        };
       } else {
-        World.wanderState[member.id].base=basePositions[i];
+        World.wanderState[member.id].base = basePositions[i];
       }
-      var wx=isForward?basePositions[i]:World.wanderState[member.id].x;
 
-      var c=document.createElement('canvas');
-      c.width=48*RENDER_SCALE; c.height=72*RENDER_SCALE;
-      c.style.imageRendering='pixelated';
-      c.style.width=displayW+'px'; c.style.height=displayH+'px';
-      c.style.display='block';
-      c.id='canvas-'+member.id;
-      var ctx=c.getContext('2d');
-      ctx.save(); ctx.scale(RENDER_SCALE,RENDER_SCALE);
-      drawChar(ctx,pal,isForward?3:0,isForward?{facing:'front'}:{facing:'front'});
-      ctx.restore();
+      var wx = isTalking ? basePositions[i] : World.wanderState[member.id].x;
 
-      var wrapper=document.createElement('div');
-      wrapper.className='character'+(isForward?' selected':'');
-      wrapper.id='char-'+member.id;
-      wrapper.style.cssText='position:absolute;left:'+wx+'px;bottom:'+FLOOR_H+'px;width:'+displayW+'px;height:'+displayH+'px;z-index:'+(isForward?20:10)+';opacity:1;transition:opacity 0.3s ease;overflow:visible;cursor:pointer;';
+      var c = document.createElement('canvas');
+      c.width  = 48 * RENDER_SCALE;
+      c.height = 72 * RENDER_SCALE;
+      c.style.cssText = 'width:' + displayW + 'px;height:' + displayH + 'px;image-rendering:pixelated;display:block;';
+      var ctx = c.getContext('2d');
+      ctx.scale(RENDER_SCALE, RENDER_SCALE);
+
+      // Pose: talker faces front, others use walk/idle naturally
+      drawChar(ctx, pal, isTalking ? 3 : 0, { facing: 'front' });
+
+      var wrapper = document.createElement('div');
+      wrapper.className = 'character' + (isTalking ? ' selected' : '');
+      wrapper.style.cssText = 'position:absolute;left:' + wx + 'px;bottom:' + FLOOR_H + 'px;' +
+        'width:' + displayW + 'px;height:' + displayH + 'px;' +
+        'z-index:' + (isTalking ? 20 : 10) + ';' +
+        'opacity:1;transition:opacity 0.3s ease;overflow:visible;cursor:pointer;';
       wrapper.appendChild(c);
 
-      var nameEl=document.createElement('div');
-      nameEl.className='char-name';
-      nameEl.style.cssText='position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:'+(isForward?'7px':'5px')+';color:'+(isTalking?'#ffcc44':isForward?'#88aaff':'#6677aa')+';';
-      nameEl.textContent=member.name.split(' ')[0].substring(0,10);
+      var nameEl = document.createElement('div');
+      nameEl.style.cssText = 'position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);' +
+        'white-space:nowrap;font-size:' + (isTalking ? '7px' : '5px') + ';' +
+        'color:' + (isTalking ? '#ffcc44' : isForward ? '#88aaff' : '#6677aa') + ';';
+      nameEl.textContent = member.name;
       wrapper.appendChild(nameEl);
 
       if (isHandRaised) {
-        var hand=document.createElement('div');
-        hand.style.cssText='position:absolute;top:-20px;left:50%;transform:translateX(-50%);font-size:14px;cursor:pointer;animation:bob 0.6s ease-in-out infinite;';
-        hand.textContent='✋';
-        hand.addEventListener('click',function(e){e.stopPropagation();Chat.activateTalking(member.id);});
+        var hand = document.createElement('div');
+        hand.style.cssText = 'position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:14px;';
+        hand.textContent = '✋';
         wrapper.appendChild(hand);
       }
 
-      wrapper.addEventListener('click',function(e){e.stopPropagation();World.selectChar(member.id);});
+      wrapper.addEventListener('click', function(e) {
+        e.stopPropagation();
+        World.selectChar(member.id);
+      });
       World.charsLayer.appendChild(wrapper);
 
-      // Idle wander for background chars
-      if (!isForward) {
-        World._startWander(member.id,c,pal,basePositions[i],W);
+      // All stage chars wander — talker stays at base position
+      if (!isTalking) {
+        World._startWander(member.id, c, pal, basePositions[i], W);
       }
     });
   },
