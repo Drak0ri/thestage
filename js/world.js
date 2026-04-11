@@ -57,7 +57,13 @@ const World = {
       room.floor.color1+' 0px,'+room.floor.color1+' 31px,'+
       room.floor.color2+' 32px,'+room.floor.color2+' 63px)';
     f.style.borderTopColor = room.floor.border;
-    this.container.appendChild(f);
+    // Insert BEFORE chars-layer so chars always render on top in DOM order
+    var charsLayer = document.getElementById('chars-layer');
+    if (charsLayer) {
+      this.container.insertBefore(f, charsLayer);
+    } else {
+      this.container.appendChild(f);
+    }
   },
 
   _buildStars() {
