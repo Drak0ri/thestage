@@ -18,6 +18,10 @@ const App = {
 
   async init() {
     this.state = await Storage.cloudLoad();
+    // Ensure all fields exist regardless of what Gist returned
+    if (!this.state.briefing)    this.state.briefing    = '';
+    if (!this.state.chatHistory) this.state.chatHistory = {};
+    if (!this.state.team)        this.state.team        = [];
     World.init();
     Chat.init();
     this._bindToolbar();
@@ -40,10 +44,12 @@ const App = {
       btn.addEventListener('click', function() { World.switchRoom(btn.dataset.room); });
     });
 
-    document.getElementById('btn-briefing').addEventListener('click', () => {
-      document.getElementById('briefing-modal').classList.add('open');
-      document.getElementById('briefing-text').value = App.state.briefing || '';
-      document.getElementById('briefing-text').focus();
+    var btnBriefing = document.getElementById('btn-briefing');
+    if (btnBriefing) btnBriefing.addEventListener('click', () => {
+      var bm = document.getElementById('briefing-modal');
+      var bt = document.getElementById('briefing-text');
+      if (bm) bm.classList.add('open');
+      if (bt) { bt.value = App.state.briefing || ''; bt.focus(); }
     });
 
     document.getElementById('btn-add').addEventListener('click', () => {
@@ -85,19 +91,17 @@ const App = {
 
     document.getElementById('add-confirm').addEventListener('click', () => this._addMember());
 
-    document.getElementById('briefing-cancel').addEventListener('click', () => {
-      document.getElementById('briefing-modal').classList.remove('open');
-    });
-    document.getElementById('briefing-modal').addEventListener('click', e => {
-      if (e.target === document.getElementById('briefing-modal'))
-        document.getElementById('briefing-modal').classList.remove('open');
-    });
-    document.getElementById('briefing-save').addEventListener('click', () => {
-      App.state.briefing = document.getElementById('briefing-text').value.trim();
+    var bModal  = document.getElementById('briefing-modal');
+    var bCancel = document.getElementById('briefing-cancel');
+    var bSave   = document.getElementById('briefing-save');
+    if (bCancel) bCancel.addEventListener('click', () => { if(bModal) bModal.classList.remove('open'); });
+    if (bModal)  bModal.addEventListener('click', e => { if (e.target === bModal) bModal.classList.remove('open'); });
+    if (bSave)   bSave.addEventListener('click', () => {
+      var ta = document.getElementById('briefing-text');
+      App.state.briefing = ta ? ta.value.trim() : '';
       Storage.cloudSave(App.state);
-      document.getElementById('briefing-modal').classList.remove('open');
-      var preview = App.state.briefing ? App.state.briefing.substring(0,40)+'...' : 'none';
-      App.setStatus('Project briefing saved — all characters will now share this context.');
+      if (bModal) bModal.classList.remove('open');
+      App.setStatus('Project briefing saved — all characters now share this context.');
     });
 
     document.getElementById('new-name').addEventListener('keydown', e => {
