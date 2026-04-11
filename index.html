@@ -27,6 +27,7 @@
         <button class="px-btn" id="btn-meeting">&#9873; MEETING</button>
         <button class="px-btn" id="btn-add">&#65291; ADD</button>
         <button class="px-btn" id="btn-dismiss" style="display:none">&#10005; DISMISS</button>
+        <button class="px-btn" id="roster-toggle" title="Team roster">&#128101; TEAM</button>
       </div>
     </header>
 
@@ -55,6 +56,15 @@
       </div>
     </div>
 
+  </div>
+
+  <!-- ROSTER DRAWER -->
+  <div id="roster-drawer">
+    <div id="roster-header">
+      <span id="roster-title">&#128101; TEAM ROSTER</span>
+      <button class="px-btn" id="roster-close" onclick="Roster.toggle()">&#10005;</button>
+    </div>
+    <div id="roster-grid"></div>
   </div>
 
   <div id="add-modal" class="modal-overlay">
@@ -111,6 +121,7 @@
   <script src="js/storage.js"></script>
   <script src="js/chat.js"></script>
   <script src="js/world.js"></script>
+  <script src="js/roster.js"></script>
   <script src="js/app.js"></script>
   <script>
     // Briefing character counter
