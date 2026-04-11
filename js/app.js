@@ -24,6 +24,7 @@ const App = {
     if (!this.state.team)        this.state.team        = [];
     World.init();
     Chat.init();
+    if (typeof Roster !== 'undefined') Roster.init();
     this._bindToolbar();
     this._bindModal();
     World.render();
