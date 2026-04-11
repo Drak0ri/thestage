@@ -123,7 +123,7 @@ const Chat = {
     if (this.forwardIds.indexOf(id) === -1) return;
     this.talkingId = id;
     this.renderPanel();
-    World.render();
+    World.refresh();
     this.handRaisedIds = this.handRaisedIds.filter(function(x) { return x !== id; });
   },
 
@@ -378,7 +378,7 @@ const Chat = {
       var wantsToTalk = chatty.some(function(word) { return member.personality.indexOf(word) !== -1; });
       if (Math.random() < (wantsToTalk ? 0.4 : 0.2)) {
         self.handRaisedIds.push(id);
-        World.render();
+        World.refresh();
       }
     });
   },
