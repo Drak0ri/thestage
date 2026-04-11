@@ -42,6 +42,9 @@ const App = {
     this._bindToolbar();
     this._bindModal();
     World.render();
+    // Restore stage AFTER render so characters actually appear
+    Chat._restoreStage();
+    if (typeof Roster !== 'undefined') Roster.render();
     this.setStatus(
       this.state.team.length
         ? 'click a character to chat'
