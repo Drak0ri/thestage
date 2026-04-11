@@ -503,6 +503,8 @@ const World = {
     App.setStatus(Chat.forwardIds.length
       ?Chat.forwardIds.length+' forward — click to talk, click again to send back'
       :'click a character to chat');
+
+    if (typeof Roster !== 'undefined') Roster.render();
   },
 
   deselectAll() { document.querySelectorAll('.character').forEach(function(c){c.classList.remove('selected');}); },
