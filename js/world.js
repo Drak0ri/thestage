@@ -327,8 +327,8 @@ const World = {
 
     team.forEach(function(member,i) {
       var isForward   = forwardIds.indexOf(member.id)!==-1;
-      // If some chars are on stage and this one isn't — skip entirely (not visible, saves resources)
-      if (forwardIds.length > 0 && !isForward) return;
+      // Only render characters explicitly on stage — roster is the gate
+      if (!isForward) return;
       var isTalking   = Chat.talkingId===member.id;
       var isHandRaised= Chat.handRaisedIds.indexOf(member.id)!==-1;
       var pal         = PALETTES[member.colorIdx%PALETTES.length];
