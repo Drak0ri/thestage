@@ -487,3 +487,21 @@ body {
   #roster-drawer { width: 180px; }
   #roster-grid { grid-template-columns: repeat(3, 1fr); }
 }
+
+.roster-hand {
+  position: absolute;
+  top: -8px;
+  right: -6px;
+  font-size: 12px;
+  animation: hand-pulse 0.8s ease-in-out infinite;
+  line-height: 1;
+  z-index: 10;
+}
+.roster-tile.hand-raised {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px rgba(255,204,68,0.3);
+}
+@keyframes hand-pulse {
+  0%, 100% { transform: scale(1) rotate(-10deg); }
+  50%       { transform: scale(1.2) rotate(10deg); }
+}
