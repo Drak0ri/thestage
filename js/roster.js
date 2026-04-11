@@ -66,12 +66,12 @@ const Roster = (function() {
 
     // Pixel face canvas — 32×40 rendered at 2× internal scale
     var canvas = document.createElement('canvas');
-    canvas.width  = 64;
-    canvas.height = 80;
-    canvas.style.cssText = 'width:32px;height:40px;image-rendering:pixelated;display:block;';
+    canvas.width  = 48;
+    canvas.height = 60;
+    canvas.style.cssText = 'width:24px;height:30px;image-rendering:pixelated;display:block;';
     var ctx = canvas.getContext('2d');
     ctx.save();
-    ctx.scale(2, 2);
+    ctx.scale(1.5, 1.5);
     var pal = PALETTES[member.colorIdx % PALETTES.length];
     drawPixelChar(ctx, pal, 0);
     ctx.restore();
