@@ -8,6 +8,7 @@ const Chat = {
   talkingId:     null,
   handRaisedIds: [],
   sharedHistory: [],
+  _restored: false,
 
   init() {
     this.panel      = document.getElementById('chat-panel');
@@ -19,6 +20,8 @@ const Chat = {
   },
 
   openPanel() {
+    // Try to restore previous conversation for this set of participants
+    this._restoreSharedHistory(this.forwardIds);
     this.panel.classList.add('open');
     this.renderPanel();
     this.inputEl.focus();
@@ -86,6 +89,14 @@ const Chat = {
     if (!this.sharedHistory.length) {
       this.appendSystem('click a name above to talk to them');
       return;
+    }
+    // Show a subtle divider if this is a restored conversation
+    if (this._restored) {
+      var divider = document.createElement('div');
+      divider.className = 'msg system';
+      divider.style.cssText = 'opacity:0.4;font-size:6px;text-align:center;border-top:1px solid var(--border);padding-top:6px;';
+      divider.textContent = '— previous conversation —';
+      this.messagesEl.appendChild(divider);
     }
     this.sharedHistory.forEach(function(m) {
       var div = document.createElement('div');
@@ -309,12 +320,39 @@ const Chat = {
   },
 
   dismissAll() {
+    // Persist the current shared conversation before clearing
+    this._saveSharedHistory();
     this.forwardIds    = [];
     this.talkingId     = null;
     this.handRaisedIds = [];
     this.sharedHistory = [];
     this.panel.classList.remove('open');
     App.setStatus('click a character to chat');
+  },
+
+  // Save sharedHistory into state so it survives panel close / room switch
+  _saveSharedHistory() {
+    if (!this.sharedHistory.length) return;
+    if (!App || !App.state) return;
+    // Key by sorted list of participant ids so the same group restores together
+    var ids = this.forwardIds.slice().sort().join(',');
+    if (!ids) return;
+    if (!App.state.conversations) App.state.conversations = {};
+    App.state.conversations[ids] = this.sharedHistory.slice();
+    Storage.cloudSave(App.state);
+  },
+
+  // Restore history for a given set of forward ids
+  _restoreSharedHistory(ids) {
+    if (!App || !App.state || !App.state.conversations) return;
+    var key = ids.slice().sort().join(',');
+    var saved = App.state.conversations[key];
+    if (saved && saved.length) {
+      this.sharedHistory = saved.slice();
+      this._restored = true;
+    } else {
+      this._restored = false;
+    }
   },
 
   close() { this.dismissAll(); },
