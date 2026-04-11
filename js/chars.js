@@ -197,7 +197,7 @@ function drawPixelCharSide(ctx, p, walkPhase, flipX, opts) {
     ctx.fillRect(x, y + offsetY, w||1, h||1);
   };
 
-  var cx = 19; // left edge of body — character is ~14px wide centered in 48
+  var cx = 17; // left edge of body — centred to match front-view sprite x=24
 
   // ── Head (side profile) ───────────────────────────────────────────
   var crouchShift = isCrouch ? 8 : 0;
