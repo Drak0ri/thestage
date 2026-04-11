@@ -19,9 +19,10 @@ const App = {
   async init() {
     this.state = await Storage.cloudLoad();
     // Ensure all fields exist regardless of what Gist returned
-    if (!this.state.briefing)    this.state.briefing    = '';
-    if (!this.state.chatHistory) this.state.chatHistory = {};
-    if (!this.state.team)        this.state.team        = [];
+    if (!this.state.briefing)       this.state.briefing       = '';
+    if (!this.state.chatHistory)    this.state.chatHistory    = {};
+    if (!this.state.team)           this.state.team           = [];
+    if (!this.state.conversations)  this.state.conversations  = {};
     World.init();
     Chat.init();
     if (typeof Roster !== 'undefined') Roster.init();
