@@ -24,7 +24,7 @@ const App = {
     if (!this.state.team)           this.state.team           = [];
     if (!this.state.conversations)  this.state.conversations  = {};
     if (!this.state.stageIds)       this.state.stageIds       = [];
-    if (this.state.talkingId === undefined) this.state.talkingId = null;
+    if (this.state.stageTalkingId === undefined) this.state.stageTalkingId = null;
     // Migrate any flat chatHistory arrays to two-layer format {summary,recent}
     Object.keys(this.state.chatHistory).forEach(function(id) {
       var h = App.state.chatHistory[id];
@@ -41,10 +41,9 @@ const App = {
     if (typeof Roster !== 'undefined') Roster.init();
     this._bindToolbar();
     this._bindModal();
-    World.render();
-    // Restore stage and then re-render with restored forwardIds
+    // Restore stage first, then render once with restored forwardIds
     Chat._restoreStage();
-    World.render();  // second render picks up restored forwardIds
+    World.render();
     if (typeof Roster !== 'undefined') Roster.render();
     this.setStatus(
       this.state.team.length
@@ -139,15 +138,11 @@ const App = {
       name: name,
       role: role || '',
       colorIdx: this.state.team.length,
-      personality: PERSONALITIES[this.state.team.length % PERSONALITIES.length],
-      bubble: null
+      personality: PERSONALITIES[this.state.team.length % PERSONALITIES.length]
     };
     this.state.team.push(member);
     Storage.cloudSave(this.state);
     World.render();
-    member.bubble = 'Hey! 👾';
-    World.render();
-    setTimeout(() => { member.bubble = null; World.render(); }, 3000);
     return member;
   },
 
@@ -172,4 +167,3 @@ document.addEventListener('DOMContentLoaded', () => {
   if (saved) { App.pin = saved; App.init(); }
   else { document.getElementById('pin-overlay').style.display = 'flex'; }
 });
-
