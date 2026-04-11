@@ -168,9 +168,10 @@ const Chat = {
 
     // Summon/dismiss instructions
     var summonCtx = 'TEAM ROSTER: ' + teamRoster + '. ' +
-      'You can summon someone into the conversation by including [SUMMON:Name] in your reply — do this when their expertise is genuinely relevant. ' +
+      'You can summon an existing team member into the conversation with [SUMMON:Name] when their expertise is relevant. ' +
       'You can dismiss someone with [DISMISS:Name] when they are done. ' +
-      'Use these sparingly and only when it truly makes sense.';
+      'You can CREATE a brand new team member with [CREATE:Name|Role] — use this when a skill or perspective is genuinely missing from the team and would help. The new person will immediately join the team and this conversation. ' +
+      'Use all of these sparingly and only when it truly makes sense.';
 
     // Project briefing context
     var briefingCtx = '';
@@ -202,12 +203,14 @@ const Chat = {
       var actionMatch  = rawReply.match(/\[ACTION:(\w+)\]/);
       var summonMatch  = rawReply.match(/\[SUMMON:([^\]]+)\]/);
       var dismissMatch = rawReply.match(/\[DISMISS:([^\]]+)\]/);
+      var createMatch  = rawReply.match(/\[CREATE:([^|\]]+)\|?([^\]]*)\]/);
 
       // Strip all tags from visible reply
       var reply = rawReply
         .replace(/\[ACTION:\w+\]\s*/g, '')
         .replace(/\[SUMMON:[^\]]+\]\s*/g, '')
         .replace(/\[DISMISS:[^\]]+\]\s*/g, '')
+        .replace(/\[CREATE:[^\]]+\]\s*/g, '')
         .trim();
 
       // Execute action
@@ -243,6 +246,24 @@ const Chat = {
             World.render();
             this.appendSystem('← ' + dismissTarget.name + ' steps back.');
           }
+        }
+      }
+
+      // Execute create — add a brand new team member
+      if (createMatch) {
+        var createName = createMatch[1].trim();
+        var createRole = createMatch[2] ? createMatch[2].trim() : '';
+        // Only create if name doesn't already exist
+        var alreadyExists = App.state.team.some(function(m) {
+          return m.name.toLowerCase() === createName.toLowerCase();
+        });
+        if (!alreadyExists && createName.length > 0) {
+          var newMember = App.createMember(createName, createRole);
+          // Auto-summon them into the conversation
+          Chat.forwardIds.push(newMember.id);
+          this.sharedHistory.push({ role: 'system', content: '✦ ' + createName + ' (' + (createRole||'team member') + ') has joined the team and the conversation.', speakerId: null });
+          World.render();
+          this.appendSystem('✦ ' + createName + (createRole ? ' — ' + createRole : '') + ' has joined the team.');
         }
       }
 
