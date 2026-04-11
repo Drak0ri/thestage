@@ -401,6 +401,8 @@ body {
   padding: 12px;
   overflow-y: auto;
   flex: 1;
+  align-content: start;
+  align-items: start;
 }
 #roster-grid::-webkit-scrollbar { width: 3px; }
 #roster-grid::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
@@ -417,7 +419,8 @@ body {
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
   background: var(--bg2);
-  min-height: 0;
+  height: 58px;
+  overflow: hidden;
 }
 .roster-tile:hover { border-color: var(--accent-bright); background: var(--bg3); }
 .roster-tile.on-stage { border-color: var(--gold); background: rgba(255,204,68,0.07); }
