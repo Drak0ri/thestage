@@ -1,7 +1,7 @@
 // js/world.js
 
 const IDLE_PX      = 1;
-const ACTIVE_PX    = 1.8;
+const ACTIVE_PX    = 1.2;
 const RENDER_SCALE = 2;
 const FLOOR_H      = 58;
 
@@ -369,11 +369,14 @@ const World = {
       var wrapper = document.createElement('div');
       wrapper.id        = 'char-' + member.id;
       wrapper.className = 'character' + (isTalking ? ' selected' : '');
+      var glow = isTalking
+        ? ';filter:drop-shadow(0 0 8px rgba(255,204,68,0.9)) drop-shadow(0 0 3px rgba(255,204,68,0.6))'
+        : '';
       wrapper.style.cssText =
         'position:absolute;left:' + Math.round(wx) + 'px;bottom:' + FLOOR_H + 'px;' +
         'width:' + displayW + 'px;height:' + displayH + 'px;' +
         'z-index:' + (isTalking ? 20 : 10) + ';' +
-        'opacity:1;overflow:visible;cursor:pointer;';
+        'opacity:1;overflow:visible;cursor:pointer' + glow + ';';
       wrapper.appendChild(c);
 
       // Name label
@@ -561,21 +564,18 @@ const World = {
   _calcPositions(ids,W) {
     var count = ids.length;
     if (count === 0) return [];
-    // Account for roster drawer width if open
     var drawerOpen = document.getElementById('roster-drawer') &&
                      document.getElementById('roster-drawer').classList.contains('open');
-    var effectiveW = drawerOpen ? Math.max(W - 220, 200) : W;
-    var margin = Math.max(40, Math.round(effectiveW * 0.08));
-    var usable  = effectiveW - margin * 2;
-    if (this.meetingMode) {
-      var sp = Math.min(60, Math.floor(effectiveW * 0.6 / (count + 1)));
-      return Array.from({length:count}, function(_,i) {
-        return Math.round(effectiveW/2 + (i-(count-1)/2)*sp - 24);
-      });
-    }
-    if (count === 1) return [Math.round(effectiveW/2 - 24)];
+    var effectiveW = Math.max((drawerOpen ? W - 225 : W), 200);
+    // Each character needs ~60px of space; spread evenly with generous margins
+    var charW = 60;
+    var totalNeeded = count * charW;
+    var margin = Math.max(40, Math.round((effectiveW - totalNeeded) / 2));
+    margin = Math.min(margin, Math.round(effectiveW * 0.15));
+    var usable = effectiveW - margin * 2;
+    if (count === 1) return [Math.round(effectiveW / 2 - 24)];
     return Array.from({length:count}, function(_,i) {
-      return Math.round(margin + (usable/(count-1))*i);
+      return Math.round(margin + (usable / (count - 1)) * i - 24);
     });
   },
 
