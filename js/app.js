@@ -23,6 +23,8 @@ const App = {
     if (!this.state.chatHistory)    this.state.chatHistory    = {};
     if (!this.state.team)           this.state.team           = [];
     if (!this.state.conversations)  this.state.conversations  = {};
+    if (!this.state.stageIds)       this.state.stageIds       = [];
+    if (this.state.talkingId === undefined) this.state.talkingId = null;
     // Migrate any flat chatHistory arrays to two-layer format {summary,recent}
     Object.keys(this.state.chatHistory).forEach(function(id) {
       var h = App.state.chatHistory[id];
