@@ -410,20 +410,21 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
-  padding: 6px 4px 5px;
+  gap: 2px;
+  padding: 5px 3px 4px;
   border-radius: var(--radius);
   border: 1px solid var(--border);
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
   background: var(--bg2);
+  min-height: 0;
 }
 .roster-tile:hover { border-color: var(--accent-bright); background: var(--bg3); }
 .roster-tile.on-stage { border-color: var(--gold); background: rgba(255,204,68,0.07); }
 
 .roster-add {
   justify-content: center;
-  min-height: 68px;
+  min-height: 56px;
   border-style: dashed;
   opacity: 0.5;
 }
