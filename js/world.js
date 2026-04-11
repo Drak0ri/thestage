@@ -322,7 +322,9 @@ const World = {
     this.charsLayer.innerHTML = '';
     var team = App.state.team;
     if (!team.length) return;
-    var W = this.container.offsetWidth || 700;
+    // Force layout measurement after any panel open/close changes
+    var W = this.container.getBoundingClientRect().width || this.container.offsetWidth || 700;
+    if (W < 100) { var self=this; requestAnimationFrame(function(){self.render();}); return; }
     var forwardIds = Chat.forwardIds;
     if (!forwardIds.length) return; // empty stage — nothing to draw
 
