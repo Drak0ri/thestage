@@ -190,24 +190,17 @@ const World = {
     ctx.beginPath();ctx.ellipse(chrX,chrY-22,8,5,0,Math.PI*2);ctx.fill();
 
     // ── Conference table — long dark rectangle, proper perspective ─────────
-    // Sits ON the floor. Top face visible from slight above angle.
-    // Front apron face visible below top. Sides angling back in perspective.
-    // Characters stand BEHIND the table on the floor.
     var tMid=Math.round(W/2);
 
-    // Table geometry — in screen coords
-    // The table occupies centre horizontally, sits with bottom at floor
-    var tBotY   = floor;                        // table bottom = floor level
-    var tH_face = 28;                           // height of front apron face
-    var tTopY   = tBotY - tH_face;             // top edge of front face = bottom of top surface
-    var tSurfH  = 14;                           // thickness of top surface visible from above
-    var tSurfTopY = tTopY - tSurfH;            // very top of table (surface top)
+    var tBotY   = floor;
+    var tH_face = 28;
+    var tTopY   = tBotY - tH_face;
+    var tSurfH  = 14;
+    var tSurfTopY = tTopY - tSurfH;
 
-    // Table is wide — nearly full width, narrowing slightly at back (perspective)
     var tFrontL = Math.round(W*0.08);
     var tFrontR = Math.round(W*0.92);
-    // Back edge of table — narrower and higher up (perspective foreshortening)
-    var tBackY2  = tSurfTopY - 12;             // back edge sits higher
+    var tBackY2  = tSurfTopY - 12;
     var tBackL   = Math.round(W*0.18);
     var tBackR   = Math.round(W*0.82);
 
@@ -222,12 +215,10 @@ const World = {
       if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lw||1;ctx.stroke();}
     }
 
-    // Top surface — trapezoid (wider at front/bottom of surface, narrower at back)
     trap(tFrontL,tSurfTopY, tFrontR,tSurfTopY,
          tBackR,tBackY2, tBackL,tBackY2,
          tLight, tDark, 0.5);
 
-    // Gloss highlight streak across top surface
     ctx.save();
     ctx.beginPath();ctx.moveTo(tFrontL,tSurfTopY);ctx.lineTo(tFrontR,tSurfTopY);ctx.lineTo(tBackR,tBackY2);ctx.lineTo(tBackL,tBackY2);ctx.closePath();ctx.clip();
     var gloss2=ctx.createLinearGradient(0,tBackY2,0,tSurfTopY+4);
@@ -235,63 +226,48 @@ const World = {
     ctx.fillStyle=gloss2;ctx.fillRect(tFrontL,tBackY2,tFrontR-tFrontL,tSurfTopY-tBackY2);
     ctx.restore();
 
-    // Front apron face — rectangle below top surface
     trap(tFrontL,tSurfTopY, tFrontR,tSurfTopY,
          tFrontR,tBotY, tFrontL,tBotY,
          tMid2, tDark, 0.5);
 
-    // Front apron shadow at bottom
     ctx.fillStyle='rgba(0,0,0,0.4)';ctx.fillRect(tFrontL,tBotY-3,tFrontR-tFrontL,3);
 
-    // Left side face — triangle/trap going back
     trap(tFrontL,tSurfTopY, tBackL,tBackY2,
          tBackL,tBackY2+tH_face+tSurfH, tFrontL,tBotY,
          tDark, '#111', 0.5);
 
-    // Right side face
     trap(tFrontR,tSurfTopY, tBackR,tBackY2,
          tBackR,tBackY2+tH_face+tSurfH, tFrontR,tBotY,
          tDark, '#111', 0.5);
 
-    // Table details on surface — cable channels, notepads
-    // Centre cable channel (dark line)
     ctx.save();
     ctx.beginPath();ctx.moveTo(tFrontL,tSurfTopY);ctx.lineTo(tFrontR,tSurfTopY);ctx.lineTo(tBackR,tBackY2);ctx.lineTo(tBackL,tBackY2);ctx.closePath();ctx.clip();
     ctx.fillStyle='rgba(0,0,0,0.25)';
-    // Two cable troughs running length of table
     ctx.fillRect(tMid-20,tBackY2,8,tSurfTopY-tBackY2);
     ctx.fillRect(tMid+12,tBackY2,8,tSurfTopY-tBackY2);
-    // Notepads — left side
     [[tFrontL+30, tSurfTopY-3],[tFrontL+70, tSurfTopY-3],[tFrontL+110, tSurfTopY-3]].forEach(function(p){
       ctx.fillStyle='#f0ede0';ctx.fillRect(p[0],p[1]-10,22,10);
       ctx.strokeStyle='rgba(0,0,0,0.15)';ctx.lineWidth=0.5;ctx.strokeRect(p[0],p[1]-10,22,10);
     });
-    // Notepads — right side
     [[tFrontR-50, tSurfTopY-3],[tFrontR-90, tSurfTopY-3],[tFrontR-130, tSurfTopY-3]].forEach(function(p){
       ctx.fillStyle='#f0ede0';ctx.fillRect(p[0],p[1]-10,22,10);
       ctx.strokeStyle='rgba(0,0,0,0.15)';ctx.lineWidth=0.5;ctx.strokeRect(p[0],p[1]-10,22,10);
     });
     ctx.restore();
 
-    // ── Chairs — dark silhouettes along table sides ────────────────────────
-    // Front row chairs (closest to viewer — below/in front of table, partially cut by floor)
     var chairPositions=[0.18,0.30,0.42,0.58,0.70,0.82];
     chairPositions.forEach(function(xf){
       var cx=Math.round(W*xf);
-      var cy=floor+6; // chair back peeks above floor line
-      // Chair back
+      var cy=floor+6;
       ctx.fillStyle='#1a1a1e';
       ctx.beginPath();ctx.ellipse(cx,cy-18,11,14,0,0,Math.PI*2);ctx.fill();
       ctx.fillStyle='#111';ctx.fillRect(cx-9,cy-18,18,22);
-      // Chair seat
       ctx.beginPath();ctx.ellipse(cx,cy,14,5,0,0,Math.PI*2);ctx.fill();
-      // Armrest hints
       ctx.fillStyle='#252525';
       ctx.fillRect(cx-14,cy-10,3,10);
       ctx.fillRect(cx+11,cy-10,3,10);
     });
 
-    // Back row chairs (far side — tiny, high up)
     var backChairY=tBackY2-8;
     [0.22,0.34,0.46,0.54,0.66,0.78].forEach(function(xf){
       var cx=Math.round(W*xf);
@@ -301,12 +277,9 @@ const World = {
       ctx.beginPath();ctx.ellipse(cx,backChairY-12,6,3,0,0,Math.PI*2);ctx.fill();
     });
 
-    // ── Floor — light carpet with LED reflection ───────────────────────────
-    // Draw on top of _buildFloor tile  
     var floorGrad=ctx.createLinearGradient(0,floor,0,H);
     floorGrad.addColorStop(0,'rgba(255,248,220,0.06)');floorGrad.addColorStop(0.3,'rgba(0,0,0,0)');
     ctx.fillStyle=floorGrad;ctx.fillRect(0,floor,W,H-floor);
-    // Table shadow on floor
     var shadowGrad=ctx.createLinearGradient(0,floor,0,floor+16);
     shadowGrad.addColorStop(0,'rgba(0,0,0,0.5)');shadowGrad.addColorStop(1,'rgba(0,0,0,0)');
     ctx.fillStyle=shadowGrad;ctx.fillRect(tFrontL,floor,tFrontR-tFrontL,16);
@@ -351,16 +324,29 @@ const World = {
       var displayW     = Math.round(48 * displayScale);
       var displayH     = Math.round(72 * displayScale);
 
-      // Wander state — initialise from base position if first appearance
+      // Wander state — initialise or smoothly update base
+      var newBase = basePositions[i];
       if (!World.wanderState[member.id]) {
         World.wanderState[member.id] = {
-          x: basePositions[i], targetX: basePositions[i],
-          dir: 1, moving: false, base: basePositions[i]
+          x: newBase, targetX: newBase,
+          dir: 1, moving: false, base: newBase
         };
       } else {
-        World.wanderState[member.id].base = basePositions[i];
+        var ws = World.wanderState[member.id];
+        var oldBase = ws.base;
+        ws.base = newBase;
+        // If the base position shifted (e.g. new char added, layout changed),
+        // shift current x by the same delta so the character doesn't snap/slide
+        if (Math.abs(newBase - oldBase) > 2) {
+          var delta = newBase - oldBase;
+          ws.x += delta;
+          ws.targetX += delta;
+          // Clamp to world bounds
+          ws.x = Math.max(40, Math.min(W - 80, ws.x));
+          ws.targetX = Math.max(40, Math.min(W - 80, ws.targetX));
+        }
       }
-      var wx = isTalking ? basePositions[i] : World.wanderState[member.id].x;
+      var wx = isTalking ? newBase : World.wanderState[member.id].x;
 
       // Canvas — id used by _startWander and playCharAction
       var c = document.createElement('canvas');
@@ -418,7 +404,7 @@ const World = {
 
       // Wander for all non-talking stage characters
       if (!isTalking) {
-        World._startWander(member.id, c, pal, basePositions[i], W);
+        World._startWander(member.id, c, pal, newBase, W);
       }
     });
   },
@@ -428,19 +414,15 @@ const World = {
     state.base=baseX;
     this.wanderState[id]=state;
 
-    // Walk animation state — kept outside the timer so it persists across ticks
+    // Walk animation state
     var walkPhase=0;
-    var WALK_MS=160;   // ms per animation frame (4 frames = ~640ms per full cycle)
+    var WALK_MS=160;   // ms per animation frame
     var MOVE_MS=16;    // physics tick ~60fps
     var msSinceLastFrame=0;
     var lastTime=Date.now();
 
-    // Speed chosen so a 120px journey takes ~2.5 walk cycles = feels natural
-    // 120px / (0.06 px/ms) = 2000ms, 4 frames * 160ms = 640ms per cycle => ~3 cycles
-    var SPEED=0.06; // px per ms
+    var SPEED=0.04; // px per ms — slower for more natural walking
 
-    // Wandering chars always stay in side-view — no front/side transitions ever.
-    // Only the active talker faces front (handled in render()).
     var drawIdle=function() {
       var ctx2=canvas.getContext('2d');
       ctx2.setTransform(1,0,0,1,0,0);
@@ -459,14 +441,16 @@ const World = {
     };
 
     var pickTarget=function() {
-      // Target relative to CURRENT position — not original base
-      // Small steps feel natural, large base offsets caused the sudden slides
-      var range  = 30 + Math.random() * 60; // 30-90px steps
+      // Small natural steps relative to current position
+      var range  = 20 + Math.random() * 40; // 20-60px steps (smaller = more natural)
       var dir    = Math.random() < 0.5 ? -1 : 1;
       var target = state.x + dir * range;
-      // Soft boundary: drift back toward base if too far from it
+      // Gently drift back toward base if straying too far
       var distFromBase = target - state.base;
-      if (Math.abs(distFromBase) > 120) target = state.base + Math.sign(distFromBase) * 80;
+      if (Math.abs(distFromBase) > 80) {
+        // Bias direction back toward base
+        target = state.base + (Math.random() - 0.5) * 60;
+      }
       state.targetX = Math.max(40, Math.min(W - 80, target));
       state.dir     = state.targetX > state.x ? 1 : -1;
       state.moving  = true;
@@ -480,7 +464,7 @@ const World = {
       if (!wrapper){clearInterval(moveTimer);return;}
 
       var now=Date.now();
-      var dt=Math.min(now-lastTime, 100);
+      var dt=Math.min(now-lastTime, 50); // cap dt to avoid big jumps after tab switch
       lastTime=now;
 
       if (state.moving) {
@@ -492,10 +476,18 @@ const World = {
           drawIdle();
           var stillTimer=setTimeout(function(){
             if (document.getElementById('char-'+id)) pickTarget();
-          }, 1500+Math.random()*2000);
+          }, 2000+Math.random()*3000); // longer pauses between walks
           World.animTimers[id+'_still']=stillTimer;
         } else {
-          state.x+=Math.min(Math.abs(diff), SPEED*dt)*state.dir;
+          // Smooth easing — slow down as approaching target
+          var maxStep = SPEED * dt;
+          var absDiff = Math.abs(diff);
+          // Ease out: decelerate in the last 15px
+          if (absDiff < 15) {
+            maxStep *= (absDiff / 15);
+            maxStep = Math.max(maxStep, 0.15); // minimum so we don't stall
+          }
+          state.x += Math.min(absDiff, maxStep) * state.dir;
           wrapper.style.left=Math.round(state.x)+'px';
           msSinceLastFrame+=dt;
           if (msSinceLastFrame>=WALK_MS) {
@@ -508,10 +500,10 @@ const World = {
     }, MOVE_MS);
     World.animTimers[id+'_move']=moveTimer;
 
-    // Initial pause before first wander (staggered so not all chars move at once)
+    // Initial pause before first wander (staggered)
     var pauseTimer=setTimeout(function(){
       if (document.getElementById('char-'+id)) pickTarget();
-    }, 800+Math.random()*2000);
+    }, 1000+Math.random()*2500);
     World.animTimers[id+'_pause']=pauseTimer;
   },
 
