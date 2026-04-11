@@ -14,7 +14,7 @@ const Chat = {
     this.panel      = document.getElementById('chat-panel');
     this.messagesEl = document.getElementById('chat-messages');
     this.inputEl    = document.getElementById('chat-input');
-    document.getElementById('chat-close').addEventListener('click', function() { Chat.dismissAll(); World.render(); });
+    document.getElementById('chat-close').addEventListener('click', function() { Chat.closePanel(); });
     document.getElementById('chat-send').addEventListener('click', function() { Chat.send(); });
     this.inputEl.addEventListener('keydown', function(e) { if (e.key === 'Enter') Chat.send(); });
   },
@@ -62,6 +62,14 @@ const Chat = {
     this.inputEl.focus();
   },
 
+  // Close the chat panel UI — does NOT remove anyone from stage
+  closePanel() {
+    this.panel.classList.remove('open');
+    App.setStatus(this.forwardIds.length
+      ? 'click a character to chat'
+      : 'stage is empty — use TEAM to summon someone');
+  },
+
   renderPanel() {
     var header = document.getElementById('chat-header');
     header.innerHTML = '';
@@ -105,7 +113,7 @@ const Chat = {
     closeBtn.className = 'px-btn danger';
     closeBtn.textContent = '✕';
     closeBtn.style.flexShrink = '0';
-    closeBtn.addEventListener('click', function() { Chat.dismissAll(); World.render(); });
+    closeBtn.addEventListener('click', function() { Chat.closePanel(); });
     header.appendChild(closeBtn);
 
     this.renderMessages();
@@ -376,17 +384,16 @@ const Chat = {
   },
 
   dismissAll() {
-    // sharedHistory is already live-saved per character — just clear the view
+    // Fully clear stage — used when explicitly ending all conversations
     this.forwardIds    = [];
     this.talkingId     = null;
     this.handRaisedIds = [];
     this.sharedHistory = [];
     this._restored     = false;
     this.panel.classList.remove('open');
-    App.setStatus('click a character to chat');
-    // Save empty stage state
     this._saveStage();
-    // Run compaction silently in the background — no await, no blocking
+    App.setStatus('stage is empty — use TEAM to summon someone');
+    // Run compaction silently in the background
     this._compactHistory();
   },
 
