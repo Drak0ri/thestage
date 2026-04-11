@@ -42,7 +42,8 @@ const Roster = (function() {
 
     team.forEach(function(member) {
       var isOnStage = Chat && Chat.forwardIds && Chat.forwardIds.indexOf(member.id) !== -1;
-      var tile = _makeTile(member, isOnStage);
+      var isHandRaised = Chat && Chat.handRaisedIds && Chat.handRaisedIds.indexOf(member.id) !== -1;
+      var tile = _makeTile(member, isOnStage, isHandRaised);
       _grid.appendChild(tile);
     });
 
@@ -59,7 +60,7 @@ const Roster = (function() {
   }
 
   // ── Build one tile ────────────────────────────────────────────────────────
-  function _makeTile(member, isOnStage) {
+  function _makeTile(member, isOnStage, isHandRaised) {
     var tile = document.createElement('div');
     tile.className = 'roster-tile' + (isOnStage ? ' on-stage' : '');
     tile.dataset.id = member.id;
@@ -88,11 +89,20 @@ const Roster = (function() {
     dot.className = 'roster-dot' + (isOnStage ? ' active' : '');
     tile.appendChild(dot);
 
+    // Hand raise indicator — pulsing ✋ badge on tile
+    if (isHandRaised) {
+      var handBadge = document.createElement('div');
+      handBadge.className = 'roster-hand';
+      handBadge.textContent = '✋';
+      tile.appendChild(handBadge);
+      tile.classList.add('hand-raised');
+    }
+
     // Tooltip
     var tip = document.createElement('div');
     tip.className = 'roster-tip';
     var role = member.role || 'team member';
-    var action = isOnStage ? 'click to park' : 'click to summon';
+    var action = isHandRaised ? 'wants to speak — click to summon' : isOnStage ? 'click to park' : 'click to summon';
     tip.innerHTML =
       '<strong>' + _esc(member.name) + '</strong>' +
       '<span>' + _esc(role) + '</span>' +
