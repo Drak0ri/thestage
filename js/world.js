@@ -37,7 +37,8 @@ const World = {
   switchRoom(roomId) {
     if (!ROOMS[roomId]) return;
     this.currentRoom = roomId;
-    Chat.dismissAll();
+    // Close panel only — keep everyone on stage
+    Chat.closePanel();
     if (typeof WorldObjects !== 'undefined') WorldObjects.onRoomSwitch();
     this._buildFloor(); this._buildBgCanvas();
     this.render();
