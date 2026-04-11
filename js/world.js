@@ -392,9 +392,10 @@ const World = {
 
       // Name label
       var nameEl = document.createElement('div');
+      nameEl.className = 'char-name';
       nameEl.style.cssText =
         'position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);' +
-        'white-space:nowrap;font-size:' + (isTalking ? '7px' : '5px') + ';' +
+        'white-space:nowrap;font-size:6px;' +
         'color:' + (isTalking ? '#ffcc44' : '#88aaff') + ';pointer-events:none;';
       nameEl.textContent = member.name;
       wrapper.appendChild(nameEl);
@@ -402,6 +403,7 @@ const World = {
       // Hand raise
       if (isHandRaised) {
         var hand = document.createElement('div');
+        hand.className = 'char-hand';
         hand.style.cssText = 'position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:14px;pointer-events:none;';
         hand.textContent = '✋';
         wrapper.appendChild(hand);
@@ -524,14 +526,16 @@ const World = {
   selectChar(id) {
     // Clicking a character opens/focuses chat — never removes from stage
     // (roster toggleStage is the only way to remove)
-    if (Chat.forwardIds.indexOf(id) === -1) {
+    var wasForward = Chat.forwardIds.indexOf(id) !== -1;
+    if (!wasForward) {
       Chat.forwardIds.push(id);
       Chat._saveStage();
+      World.render(); // full render only when stage membership changes
     }
     Chat.talkingId = id;
     Chat.handRaisedIds = Chat.handRaisedIds.filter(function(x){ return x !== id; });
     Chat.openPanel();
-    World.render();
+    World.refresh(); // just update glow/badge
     var m = App.state.team.find(function(m){ return m.id === id; });
     App.setStatus('talking to ' + (m ? m.name : '...'));
     if (typeof Roster !== 'undefined') Roster.render();
@@ -589,5 +593,47 @@ const World = {
   _clearTimers() {
     Object.values(this.animTimers).forEach(function(t){ if(typeof t==='number') clearInterval(t); clearTimeout(t); });
     this.animTimers={};
+  },
+
+  // Lightweight visual refresh — updates glow/badge/name without rebuilding DOM or resetting wander
+  refresh() {
+    var team = App.state.team;
+    if (!team || !this.charsLayer) return;
+    var self = this;
+    Chat.forwardIds.forEach(function(id) {
+      var wrapper = document.getElementById('char-' + id);
+      if (!wrapper) return;
+      var isTalking    = Chat.talkingId === id;
+      var isHandRaised = Chat.handRaisedIds.indexOf(id) !== -1;
+      var member       = team.find(function(m){ return m.id === id; });
+      if (!member) return;
+
+      // Update glow
+      var glow = isTalking
+        ? ';filter:drop-shadow(0 0 8px rgba(255,204,68,0.9)) drop-shadow(0 0 3px rgba(255,204,68,0.6))'
+        : '';
+      wrapper.style.filter = isTalking
+        ? 'drop-shadow(0 0 8px rgba(255,204,68,0.9)) drop-shadow(0 0 3px rgba(255,204,68,0.6))'
+        : '';
+      wrapper.style.zIndex = isTalking ? '20' : '10';
+      wrapper.classList.toggle('selected', isTalking);
+
+      // Update name label colour
+      var nameEl = wrapper.querySelector('.char-name');
+      if (nameEl) nameEl.style.color = isTalking ? '#ffcc44' : '#88aaff';
+
+      // Update hand raise badge
+      var existingHand = wrapper.querySelector('.char-hand');
+      if (isHandRaised && !existingHand) {
+        var hand = document.createElement('div');
+        hand.className = 'char-hand';
+        hand.style.cssText = 'position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:14px;pointer-events:none;';
+        hand.textContent = '✋';
+        wrapper.appendChild(hand);
+      } else if (!isHandRaised && existingHand) {
+        existingHand.remove();
+      }
+    });
+    if (typeof Roster !== 'undefined') Roster.render();
   }
 };
