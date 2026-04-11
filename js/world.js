@@ -524,18 +524,18 @@ const World = {
   },
 
   selectChar(id) {
-    // Clicking a character opens/focuses chat — never removes from stage
-    // (roster toggleStage is the only way to remove)
     var wasForward = Chat.forwardIds.indexOf(id) !== -1;
     if (!wasForward) {
       Chat.forwardIds.push(id);
       Chat._saveStage();
-      World.render(); // full render only when stage membership changes
+      World.render();   // full rebuild — new character added to stage
+    } else {
+      // Already on stage — just switch active speaker, no rebuild needed
+      Chat.talkingId = id;
+      Chat.handRaisedIds = Chat.handRaisedIds.filter(function(x){ return x !== id; });
+      Chat.openPanel();
+      World.refresh();  // update glow/name only, wander continues uninterrupted
     }
-    Chat.talkingId = id;
-    Chat.handRaisedIds = Chat.handRaisedIds.filter(function(x){ return x !== id; });
-    Chat.openPanel();
-    World.refresh(); // just update glow/badge
     var m = App.state.team.find(function(m){ return m.id === id; });
     App.setStatus('talking to ' + (m ? m.name : '...'));
     if (typeof Roster !== 'undefined') Roster.render();
@@ -595,11 +595,10 @@ const World = {
     this.animTimers={};
   },
 
-  // Lightweight visual refresh — updates glow/badge/name without rebuilding DOM or resetting wander
+  // Lightweight visual refresh — updates glow/sprite/badge without rebuilding DOM or resetting wander
   refresh() {
     var team = App.state.team;
     if (!team || !this.charsLayer) return;
-    var self = this;
     Chat.forwardIds.forEach(function(id) {
       var wrapper = document.getElementById('char-' + id);
       if (!wrapper) return;
@@ -607,22 +606,46 @@ const World = {
       var isHandRaised = Chat.handRaisedIds.indexOf(id) !== -1;
       var member       = team.find(function(m){ return m.id === id; });
       if (!member) return;
+      var pal = PALETTES[member.colorIdx % PALETTES.length];
 
-      // Update glow
-      var glow = isTalking
-        ? ';filter:drop-shadow(0 0 8px rgba(255,204,68,0.9)) drop-shadow(0 0 3px rgba(255,204,68,0.6))'
-        : '';
+      // Update glow and z-index
       wrapper.style.filter = isTalking
         ? 'drop-shadow(0 0 8px rgba(255,204,68,0.9)) drop-shadow(0 0 3px rgba(255,204,68,0.6))'
         : '';
       wrapper.style.zIndex = isTalking ? '20' : '10';
       wrapper.classList.toggle('selected', isTalking);
 
-      // Update name label colour
+      // Update sprite — talker faces front, others stay side-idle
+      var canvas = document.getElementById('canvas-' + id);
+      if (canvas) {
+        var ctx = canvas.getContext('2d');
+        ctx.setTransform(1,0,0,1,0,0);
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        ctx.setTransform(RENDER_SCALE,0,0,RENDER_SCALE,0,0);
+        if (isTalking) {
+          drawChar(ctx, pal, 3, { facing: 'front' });
+        } else {
+          // Restore side idle — wander timer will take over sprite from here
+          drawChar(ctx, pal, 0, { facing: 'side', walkPhase: 1, flipX: false, offsetY: 0 });
+        }
+      }
+
+      // Update canvas display size
+      var displayScale = isTalking ? ACTIVE_PX : IDLE_PX;
+      var displayW = Math.round(48 * displayScale);
+      var displayH = Math.round(72 * displayScale);
+      if (canvas) {
+        canvas.style.width  = displayW + 'px';
+        canvas.style.height = displayH + 'px';
+      }
+      wrapper.style.width  = displayW + 'px';
+      wrapper.style.height = displayH + 'px';
+
+      // Update name colour
       var nameEl = wrapper.querySelector('.char-name');
       if (nameEl) nameEl.style.color = isTalking ? '#ffcc44' : '#88aaff';
 
-      // Update hand raise badge
+      // Hand raise badge
       var existingHand = wrapper.querySelector('.char-hand');
       if (isHandRaised && !existingHand) {
         var hand = document.createElement('div');
