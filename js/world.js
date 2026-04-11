@@ -514,19 +514,29 @@ const World = {
     var member=App.state.team.find(function(m){return m.id===id;});
     if (!member) return;
     var pal=PALETTES[member.colorIdx%PALETTES.length];
-    var isForward=Chat.forwardIds.indexOf(id)!==-1;
-    var scale=isForward?RENDER_SCALE*ACTIVE_PX/IDLE_PX:RENDER_SCALE;
     // Pause wander during action
     clearInterval(this.animTimers[id+'_move']);
+    clearTimeout(this.animTimers[id+'_pause']);
+    clearTimeout(this.animTimers[id+'_still']);
     await playAction(canvas, pal, RENDER_SCALE, actionName);
+    // Restart wander if character is still on stage and not the active talker
+    if (Chat.forwardIds.indexOf(id) !== -1 && Chat.talkingId !== id) {
+      var W = World.container ? (World.container.getBoundingClientRect().width || World.container.offsetWidth || 700) : 700;
+      var ws = World.wanderState[id];
+      var base = ws ? ws.base : (W / 2);
+      World._startWander(id, canvas, pal, base, W);
+    }
   },
 
   selectChar(id) {
     var wasForward = Chat.forwardIds.indexOf(id) !== -1;
     if (!wasForward) {
       Chat.forwardIds.push(id);
+      Chat.talkingId = id;
+      Chat.handRaisedIds = Chat.handRaisedIds.filter(function(x){ return x !== id; });
       Chat._saveStage();
       World.render();   // full rebuild — new character added to stage
+      Chat.openPanel();
     } else {
       // Already on stage — just switch active speaker, no rebuild needed
       Chat.talkingId = id;
