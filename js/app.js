@@ -112,37 +112,38 @@ const App = {
     });
   },
 
-  _addMember() {
-    const name = document.getElementById('new-name').value.trim();
-    if (!name) {
-      document.getElementById('new-name').focus();
-      return;
-    }
-    const role = document.getElementById('new-role').value.trim();
-
+  // Reusable: create a member from name+role and add to state
+  // Called both from the UI modal and from chat.js [CREATE:] tag
+  createMember(name, role) {
     const member = {
       id: Date.now().toString() + Math.random().toString(36).slice(2, 6),
-      name,
-      role,
+      name: name,
+      role: role || '',
       colorIdx: this.state.team.length,
       personality: PERSONALITIES[this.state.team.length % PERSONALITIES.length],
       bubble: null
     };
-
     this.state.team.push(member);
     Storage.cloudSave(this.state);
+    World.render();
+    member.bubble = 'Hey! 👾';
+    World.render();
+    setTimeout(() => { member.bubble = null; World.render(); }, 3000);
+    return member;
+  },
+
+  _addMember() {
+    const name = document.getElementById('new-name').value.trim();
+    if (!name) { document.getElementById('new-name').focus(); return; }
+    const role = document.getElementById('new-role').value.trim();
+
+    const member = this.createMember(name, role);
 
     document.getElementById('add-modal').classList.remove('open');
     document.getElementById('new-name').value = '';
     document.getElementById('new-role').value = '';
 
-    World.render();
     this.setStatus(name + ' has joined The Stage!');
-
-    // Welcome bubble
-    member.bubble = 'Hey! 👾';
-    World.render();
-    setTimeout(() => { member.bubble = null; World.render(); }, 3000);
   }
 };
 
