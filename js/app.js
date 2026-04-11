@@ -23,6 +23,17 @@ const App = {
     if (!this.state.chatHistory)    this.state.chatHistory    = {};
     if (!this.state.team)           this.state.team           = [];
     if (!this.state.conversations)  this.state.conversations  = {};
+    // Migrate any flat chatHistory arrays to two-layer format {summary,recent}
+    Object.keys(this.state.chatHistory).forEach(function(id) {
+      var h = App.state.chatHistory[id];
+      if (Array.isArray(h)) {
+        App.state.chatHistory[id] = { summary: '', recent: h };
+      } else if (!h || typeof h !== 'object') {
+        App.state.chatHistory[id] = { summary: '', recent: [] };
+      }
+      if (!App.state.chatHistory[id].recent) App.state.chatHistory[id].recent = [];
+      if (!App.state.chatHistory[id].summary) App.state.chatHistory[id].summary = '';
+    });
     World.init();
     Chat.init();
     if (typeof Roster !== 'undefined') Roster.init();
