@@ -100,6 +100,7 @@ body {
 #chars-layer {
   position: absolute;
   inset: 0;
+  z-index: 5;
 }
 #world-hud {
   position: absolute;
@@ -319,6 +320,7 @@ body {
   position: absolute;
   bottom: 0; left: 0; right: 0;
   height: 58px;
+  z-index: 2;
   background: repeating-linear-gradient(
     90deg,
     #1e1c3a 0px, #1e1c3a 31px,
