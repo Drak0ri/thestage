@@ -20,8 +20,9 @@ const Chat = {
   },
 
   openPanel() {
-    // Try to restore previous conversation for this set of participants
-    this._restoreSharedHistory(this.forwardIds);
+    // Merge history for whoever is being brought forward
+    var self = this;
+    this.forwardIds.forEach(function(id) { self._mergeHistory(id); });
     this.panel.classList.add('open');
     this.renderPanel();
     this.inputEl.focus();
@@ -235,6 +236,8 @@ const Chat = {
         });
         if (target && Chat.forwardIds.indexOf(target.id) === -1) {
           Chat.forwardIds.push(target.id);
+          // Merge this member's history so they have context of past convos
+          this._mergeHistory(target.id);
           this.sharedHistory.push({ role: 'system', content: '→ ' + target.name + ' joins the conversation.', speakerId: null });
           World.render();
           this.appendSystem('→ ' + target.name + ' joins the conversation.');
@@ -287,9 +290,30 @@ const Chat = {
       this.messagesEl.appendChild(div);
       this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
 
+      // Save to per-character history — user message visible to all participants
       if (!App.state.chatHistory[member.id]) App.state.chatHistory[member.id] = [];
-      App.state.chatHistory[member.id].push({ role: 'user',      content: userText });
-      App.state.chatHistory[member.id].push({ role: 'assistant', content: reply    });
+      // Avoid duplicate user messages if already saved from a previous turn
+      var lastSaved = App.state.chatHistory[member.id];
+      var alreadyHasUser = lastSaved.length && lastSaved[lastSaved.length-2] &&
+        lastSaved[lastSaved.length-2].role === 'user' &&
+        lastSaved[lastSaved.length-2].content === userText;
+      if (!alreadyHasUser) {
+        App.state.chatHistory[member.id].push({ role: 'user',      content: userText,  speakerId: null      });
+      }
+      App.state.chatHistory[member.id].push(  { role: 'assistant', content: reply,     speakerId: member.id });
+      // Also save this user message to all other forward members' histories
+      // so if they're opened later they have the full conversation context
+      Chat.forwardIds.forEach(function(fid) {
+        if (fid === member.id) return;
+        if (!App.state.chatHistory[fid]) App.state.chatHistory[fid] = [];
+        var fhist = App.state.chatHistory[fid];
+        var lastFUser = fhist.length && fhist[fhist.length-1] &&
+          fhist[fhist.length-1].role === 'user' &&
+          fhist[fhist.length-1].content === userText;
+        if (!lastFUser) {
+          App.state.chatHistory[fid].push({ role: 'user', content: userText, speakerId: null });
+        }
+      });
 
       // Re-render header in case forwardIds changed
       this.renderPanel();
@@ -320,38 +344,43 @@ const Chat = {
   },
 
   dismissAll() {
-    // Persist the current shared conversation before clearing
-    this._saveSharedHistory();
+    // sharedHistory is already live-saved per character — just clear the view
     this.forwardIds    = [];
     this.talkingId     = null;
     this.handRaisedIds = [];
     this.sharedHistory = [];
+    this._restored     = false;
     this.panel.classList.remove('open');
     App.setStatus('click a character to chat');
   },
 
-  // Save sharedHistory into state so it survives panel close / room switch
-  _saveSharedHistory() {
-    if (!this.sharedHistory.length) return;
-    if (!App || !App.state) return;
-    // Key by sorted list of participant ids so the same group restores together
-    var ids = this.forwardIds.slice().sort().join(',');
-    if (!ids) return;
-    if (!App.state.conversations) App.state.conversations = {};
-    App.state.conversations[ids] = this.sharedHistory.slice();
-    Storage.cloudSave(App.state);
-  },
+  // Merge a member's saved history into sharedHistory when they join.
+  // Appends only messages not already present (avoids duplicates when
+  // multiple members share the same user messages).
+  _mergeHistory(memberId) {
+    if (!App || !App.state || !App.state.chatHistory) return;
+    var saved = App.state.chatHistory[memberId] || [];
+    if (!saved.length) return;
 
-  // Restore history for a given set of forward ids
-  _restoreSharedHistory(ids) {
-    if (!App || !App.state || !App.state.conversations) return;
-    var key = ids.slice().sort().join(',');
-    var saved = App.state.conversations[key];
-    if (saved && saved.length) {
-      this.sharedHistory = saved.slice();
+    // Find the last message already in sharedHistory from this member
+    // or any user message — so we only append genuinely new content
+    var existing = new Set(
+      this.sharedHistory.map(function(m) { return m.role + '|' + m.content; })
+    );
+
+    var added = 0;
+    saved.forEach(function(m) {
+      var key = m.role + '|' + m.content;
+      if (!existing.has(key)) {
+        Chat.sharedHistory.push(m);
+        existing.add(key);
+        added++;
+      }
+    });
+
+    if (added > 0) {
+      // Sort by insertion — saved history is chronological so this is fine
       this._restored = true;
-    } else {
-      this._restored = false;
     }
   },
 
