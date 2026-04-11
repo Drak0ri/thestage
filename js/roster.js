@@ -109,10 +109,9 @@ const Roster = (function() {
       '<em>' + action + '</em>';
     tile.appendChild(tip);
 
-    // Click: toggle on/off stage
+    // Click: toggle on/off stage (roster is the only gate for this)
     tile.addEventListener('click', function() {
-      World.selectChar(member.id);
-      render(); // re-render dots
+      World.toggleStage(member.id);
     });
 
     return tile;
