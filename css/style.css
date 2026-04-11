@@ -77,7 +77,7 @@ body {
   width: 100%;
   height: var(--world-h);
   background: #0a0f06;
-  overflow: hidden;
+  overflow: visible;
 }
 #bg-canvas {
   position: absolute;
@@ -320,7 +320,7 @@ body {
   position: absolute;
   bottom: 0; left: 0; right: 0;
   height: 58px;
-  z-index: 2;
+  z-index: 3;
   background: repeating-linear-gradient(
     90deg,
     #1e1c3a 0px, #1e1c3a 31px,
