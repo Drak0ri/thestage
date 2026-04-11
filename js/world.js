@@ -319,30 +319,30 @@ const World = {
 
   render() {
     this._clearTimers();
-    this.charsLayer.innerHTML='';
-    var team=App.state.team;
+    this.charsLayer.innerHTML = '';
+    var team = App.state.team;
     if (!team.length) return;
-    var W=this.container.offsetWidth||700;
-    var forwardIds=Chat.forwardIds;
-    var basePositions=this._calcPositions(team.length,W);
+    var W = this.container.offsetWidth || 700;
+    var forwardIds = Chat.forwardIds;
+    if (!forwardIds.length) return; // empty stage — nothing to draw
 
-    team.forEach(function(member,i) {
-      var isForward    = forwardIds.indexOf(member.id) !== -1;
-      // Only render characters that are on stage (in forwardIds)
-      if (!isForward) return;
+    // Build ordered list of members who are on stage
+    var stageMembers = forwardIds.map(function(id) {
+      return team.find(function(m) { return m.id === id; });
+    }).filter(Boolean);
 
+    var basePositions = this._calcPositions(forwardIds, W);
+
+    stageMembers.forEach(function(member, i) {
       var isTalking    = Chat.talkingId === member.id;
       var isHandRaised = Chat.handRaisedIds.indexOf(member.id) !== -1;
       var pal          = PALETTES[member.colorIdx % PALETTES.length];
-      var panelOpen    = Chat.panel && Chat.panel.classList.contains('open');
 
-      // Scale: active (talking) slightly larger, others normal
       var displayScale = isTalking ? ACTIVE_PX : IDLE_PX;
       var displayW     = Math.round(48 * displayScale);
       var displayH     = Math.round(72 * displayScale);
 
-      // Wander state — all stage chars wander when panel is closed,
-      // the active talker faces front and stays still
+      // Wander state — initialise from base position if first appearance
       if (!World.wanderState[member.id]) {
         World.wanderState[member.id] = {
           x: basePositions[i], targetX: basePositions[i],
@@ -351,48 +351,54 @@ const World = {
       } else {
         World.wanderState[member.id].base = basePositions[i];
       }
-
       var wx = isTalking ? basePositions[i] : World.wanderState[member.id].x;
 
+      // Canvas — id used by _startWander and playCharAction
       var c = document.createElement('canvas');
+      c.id     = 'canvas-' + member.id;
       c.width  = 48 * RENDER_SCALE;
       c.height = 72 * RENDER_SCALE;
       c.style.cssText = 'width:' + displayW + 'px;height:' + displayH + 'px;image-rendering:pixelated;display:block;';
       var ctx = c.getContext('2d');
       ctx.scale(RENDER_SCALE, RENDER_SCALE);
-
-      // Pose: talker faces front, others use walk/idle naturally
       drawChar(ctx, pal, isTalking ? 3 : 0, { facing: 'front' });
 
+      // Wrapper — id used by _startWander to find and move the element
       var wrapper = document.createElement('div');
+      wrapper.id        = 'char-' + member.id;
       wrapper.className = 'character' + (isTalking ? ' selected' : '');
-      wrapper.style.cssText = 'position:absolute;left:' + wx + 'px;bottom:' + FLOOR_H + 'px;' +
+      wrapper.style.cssText =
+        'position:absolute;left:' + Math.round(wx) + 'px;bottom:' + FLOOR_H + 'px;' +
         'width:' + displayW + 'px;height:' + displayH + 'px;' +
         'z-index:' + (isTalking ? 20 : 10) + ';' +
-        'opacity:1;transition:opacity 0.3s ease;overflow:visible;cursor:pointer;';
+        'opacity:1;overflow:visible;cursor:pointer;';
       wrapper.appendChild(c);
 
+      // Name label
       var nameEl = document.createElement('div');
-      nameEl.style.cssText = 'position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);' +
+      nameEl.style.cssText =
+        'position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);' +
         'white-space:nowrap;font-size:' + (isTalking ? '7px' : '5px') + ';' +
-        'color:' + (isTalking ? '#ffcc44' : isForward ? '#88aaff' : '#6677aa') + ';';
+        'color:' + (isTalking ? '#ffcc44' : '#88aaff') + ';pointer-events:none;';
       nameEl.textContent = member.name;
       wrapper.appendChild(nameEl);
 
+      // Hand raise
       if (isHandRaised) {
         var hand = document.createElement('div');
-        hand.style.cssText = 'position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:14px;';
+        hand.style.cssText = 'position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:14px;pointer-events:none;';
         hand.textContent = '✋';
         wrapper.appendChild(hand);
       }
 
+      // Click: open chat / switch active speaker — never removes from stage
       wrapper.addEventListener('click', function(e) {
         e.stopPropagation();
         World.selectChar(member.id);
       });
       World.charsLayer.appendChild(wrapper);
 
-      // All stage chars wander — talker stays at base position
+      // Wander for all non-talking stage characters
       if (!isTalking) {
         World._startWander(member.id, c, pal, basePositions[i], W);
       }
@@ -504,22 +510,18 @@ const World = {
   },
 
   selectChar(id) {
-    var idx=Chat.forwardIds.indexOf(id);
-    if (idx!==-1) {
-      Chat.forwardIds.splice(idx,1);
-      Chat.handRaisedIds=Chat.handRaisedIds.filter(function(x){return x!==id;});
-      if (Chat.talkingId===id) Chat.talkingId=Chat.forwardIds.length?Chat.forwardIds[0]:null;
-      if (Chat.forwardIds.length===0) Chat.dismissAll();
-      else { Chat.renderPanel(); World.render(); }
-    } else {
+    // Clicking a character opens/focuses chat — never removes from stage
+    // (roster toggleStage is the only way to remove)
+    if (Chat.forwardIds.indexOf(id) === -1) {
       Chat.forwardIds.push(id);
-      if (!Chat.talkingId) Chat.talkingId=id;
-      Chat.openPanel(); World.render();
+      Chat._saveStage();
     }
-    App.setStatus(Chat.forwardIds.length
-      ?Chat.forwardIds.length+' forward — click to talk, click again to send back'
-      :'click a character to chat');
-
+    Chat.talkingId = id;
+    Chat.handRaisedIds = Chat.handRaisedIds.filter(function(x){ return x !== id; });
+    Chat.openPanel();
+    World.render();
+    var m = App.state.team.find(function(m){ return m.id === id; });
+    App.setStatus('talking to ' + (m ? m.name : '...'));
     if (typeof Roster !== 'undefined') Roster.render();
   },
 
@@ -554,12 +556,14 @@ const World = {
     if (typeof Roster !== 'undefined') Roster.render();
   },
 
-  _calcPositions(count,W) {
+  _calcPositions(ids,W) {
+    var count = ids.length;
+    if (count === 0) return [];
     if (this.meetingMode) {
       var sp=Math.min(60,Math.floor(W*0.6/(count+1)));
       return Array.from({length:count},function(_,i){return Math.round(W/2+(i-(count-1)/2)*sp-24);});
     }
-    var margin=60,usable=W-margin*2;
+    var margin=80,usable=W-margin*2;
     if (count===1) return [Math.round(W/2-24)];
     return Array.from({length:count},function(_,i){return Math.round(margin+(usable/(count-1))*i-24);});
   },
