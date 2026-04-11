@@ -459,12 +459,18 @@ const World = {
     };
 
     var pickTarget=function() {
-      var range=80+Math.random()*60;
-      var offset=(Math.random()<0.5?-1:1)*range;
-      state.targetX=Math.max(30,Math.min(W-70,state.base+offset));
-      state.dir=state.targetX>state.x?1:-1;
-      state.moving=true;
-      walkPhase=0; msSinceLastFrame=0;
+      // Target relative to CURRENT position — not original base
+      // Small steps feel natural, large base offsets caused the sudden slides
+      var range  = 30 + Math.random() * 60; // 30-90px steps
+      var dir    = Math.random() < 0.5 ? -1 : 1;
+      var target = state.x + dir * range;
+      // Soft boundary: drift back toward base if too far from it
+      var distFromBase = target - state.base;
+      if (Math.abs(distFromBase) > 120) target = state.base + Math.sign(distFromBase) * 80;
+      state.targetX = Math.max(40, Math.min(W - 80, target));
+      state.dir     = state.targetX > state.x ? 1 : -1;
+      state.moving  = true;
+      walkPhase = 0; msSinceLastFrame = 0;
     };
 
     drawIdle();
