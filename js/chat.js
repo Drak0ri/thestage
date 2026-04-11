@@ -9,6 +9,8 @@ const Chat = {
   handRaisedIds: [],
   sharedHistory: [],
   _restored: false,
+  _saving: false,       // guard against concurrent cloudSaves
+  _savePending: false,
 
   init() {
     this.panel      = document.getElementById('chat-panel');
@@ -19,12 +21,27 @@ const Chat = {
     this.inputEl.addEventListener('keydown', function(e) { if (e.key === 'Enter') Chat.send(); });
   },
 
-  // Persist who is on stage so it survives refresh/reopen
+  // Persist who is on stage so it survives refresh/reopen — debounced
   _saveStage() {
     if (!App || !App.state) return;
     App.state.stageIds        = this.forwardIds.slice();
     App.state.stageTalkingId  = this.talkingId;
-    Storage.cloudSave(App.state);
+    this._debouncedCloudSave();
+  },
+
+  // Debounced save — collapses rapid calls into one
+  _debouncedCloudSave() {
+    if (this._saving) { this._savePending = true; return; }
+    this._saving = true;
+    Storage.cloudSave(App.state).then(function() {
+      Chat._saving = false;
+      if (Chat._savePending) {
+        Chat._savePending = false;
+        Chat._debouncedCloudSave();
+      }
+    }).catch(function() {
+      Chat._saving = false;
+    });
   },
 
   // Restore stage selection from saved state
@@ -152,7 +169,13 @@ const Chat = {
       } else {
         div.className = 'msg ai';
         var member = App.state.team.find(function(t) { return t.id === m.speakerId; });
-        div.innerHTML = '<div class="speaker">' + (member ? member.name.toUpperCase() : '') + '</div>' + Chat._esc(m.content);
+        var speakerEl = document.createElement('div');
+        speakerEl.className = 'speaker';
+        speakerEl.textContent = member ? member.name.toUpperCase() : '';
+        div.appendChild(speakerEl);
+        var bodyEl = document.createElement('span');
+        bodyEl.innerHTML = Chat._esc(m.content);
+        div.appendChild(bodyEl);
       }
       Chat.messagesEl.appendChild(div);
     });
@@ -185,7 +208,7 @@ const Chat = {
 
     await this._getResponse(member, text);
     this._maybeRaiseHands(member.id);
-    Storage.cloudSave(App.state);
+    this._debouncedCloudSave();
   },
 
   async _getResponse(member, userText) {
@@ -342,7 +365,13 @@ const Chat = {
 
       var div = document.createElement('div');
       div.className = 'msg ai';
-      div.innerHTML = '<div class="speaker">' + member.name.toUpperCase() + '</div>' + Chat._esc(reply);
+      var speakerEl = document.createElement('div');
+      speakerEl.className = 'speaker';
+      speakerEl.textContent = member.name.toUpperCase();
+      div.appendChild(speakerEl);
+      var bodyEl = document.createElement('span');
+      bodyEl.innerHTML = Chat._esc(reply);
+      div.appendChild(bodyEl);
       this.messagesEl.appendChild(div);
       this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
 
@@ -362,7 +391,13 @@ const Chat = {
       thinking.remove();
       var err = document.createElement('div');
       err.className = 'msg ai';
-      err.innerHTML = '<div class="speaker">ERROR</div>Connection failed — check your PIN and connection.';
+      var errSpeaker = document.createElement('div');
+      errSpeaker.className = 'speaker';
+      errSpeaker.textContent = 'ERROR';
+      err.appendChild(errSpeaker);
+      var errBody = document.createElement('span');
+      errBody.textContent = 'Connection failed — check your PIN and connection.';
+      err.appendChild(errBody);
       this.messagesEl.appendChild(err);
     }
   },
@@ -458,7 +493,8 @@ const Chat = {
 
       // Take the oldest messages beyond the buffer for summarisation
       var toSummarise = h.recent.slice(0, h.recent.length - BUFFER);
-      h.recent = h.recent.slice(h.recent.length - BUFFER);
+      // Don't mutate h.recent yet — only do it after success
+      var keptRecent = h.recent.slice(h.recent.length - BUFFER);
 
       // Build a readable transcript of what to summarise
       var transcript = toSummarise.map(function(m) {
@@ -486,11 +522,11 @@ const Chat = {
         var data = await resp.json();
         if (data.content && data.content[0]) {
           h.summary = data.content[0].text.trim();
+          h.recent = keptRecent; // only truncate after successful summarisation
           didCompact = true;
         }
       } catch(e) {
-        // Summarisation failed — put messages back so nothing is lost
-        h.recent = toSummarise.concat(h.recent);
+        // Summarisation failed — h.recent is untouched, nothing lost
         console.warn('Compaction failed for', id, e);
       }
     }
