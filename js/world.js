@@ -368,7 +368,7 @@ const World = {
       c.height = 72 * RENDER_SCALE;
       c.style.cssText = 'width:' + displayW + 'px;height:' + displayH + 'px;image-rendering:pixelated;display:block;';
       var ctx = c.getContext('2d');
-      ctx.scale(RENDER_SCALE, RENDER_SCALE);
+      ctx.setTransform(RENDER_SCALE, 0, 0, RENDER_SCALE, 0, 0);
       drawChar(ctx, pal, isTalking ? 3 : 0, { facing: 'front' });
 
       // Wrapper — id used by _startWander to find and move the element
@@ -434,19 +434,19 @@ const World = {
 
     var drawFront=function() {
       var ctx2=canvas.getContext('2d');
+      ctx2.setTransform(1,0,0,1,0,0); // reset transform before clearing
       ctx2.clearRect(0,0,canvas.width,canvas.height);
-      ctx2.save(); ctx2.scale(RENDER_SCALE,RENDER_SCALE);
+      ctx2.setTransform(RENDER_SCALE,0,0,RENDER_SCALE,0,0);
       drawChar(ctx2,pal,0,{facing:'front'});
-      ctx2.restore();
     };
 
     var drawSide=function() {
       var ctx2=canvas.getContext('2d');
+      ctx2.setTransform(1,0,0,1,0,0); // reset before clearing
       ctx2.clearRect(0,0,canvas.width,canvas.height);
-      ctx2.save(); ctx2.scale(RENDER_SCALE,RENDER_SCALE);
+      ctx2.setTransform(RENDER_SCALE,0,0,RENDER_SCALE,0,0);
       var isContact=(walkPhase===0||walkPhase===2);
       drawChar(ctx2,pal,0,{facing:'side',walkPhase:walkPhase,flipX:state.dir<0,offsetY:isContact?1:0});
-      ctx2.restore();
     };
 
     var pickTarget=function() {
