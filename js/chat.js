@@ -17,6 +17,42 @@ const Chat = {
     document.getElementById('chat-close').addEventListener('click', function() { Chat.dismissAll(); World.render(); });
     document.getElementById('chat-send').addEventListener('click', function() { Chat.send(); });
     this.inputEl.addEventListener('keydown', function(e) { if (e.key === 'Enter') Chat.send(); });
+    // Restore previous stage selection from saved state
+    this._restoreStage();
+  },
+
+  // Persist who is on stage so it survives refresh/reopen
+  _saveStage() {
+    if (!App || !App.state) return;
+    App.state.stageIds   = this.forwardIds.slice();
+    App.state.talkingId  = this.talkingId;
+    Storage.cloudSave(App.state);
+  },
+
+  // Restore stage selection from saved state
+  _restoreStage() {
+    if (!App || !App.state) return;
+    var saved = App.state.stageIds;
+    if (!saved || !saved.length) return;
+    // Only restore ids that still exist in the team
+    var team = App.state.team || [];
+    var validIds = saved.filter(function(id) {
+      return team.some(function(m) { return m.id === id; });
+    });
+    if (!validIds.length) return;
+    this.forwardIds = validIds;
+    // Restore talkingId if still valid
+    if (App.state.talkingId && validIds.indexOf(App.state.talkingId) !== -1) {
+      this.talkingId = App.state.talkingId;
+    } else {
+      this.talkingId = validIds[0];
+    }
+    // Restore shared history for the saved participants
+    var self = this;
+    validIds.forEach(function(id) { self._mergeHistory(id); });
+    // Open the panel if someone is on stage
+    this.panel.classList.add('open');
+    this.renderPanel();
   },
 
   openPanel() {
@@ -253,6 +289,7 @@ const Chat = {
           this.sharedHistory.push({ role: 'system', content: '→ ' + target.name + ' joins the conversation.', speakerId: null });
           World.render();
           this.appendSystem('→ ' + target.name + ' joins the conversation.');
+          this._saveStage();
         }
       }
 
@@ -271,6 +308,7 @@ const Chat = {
             this.sharedHistory.push({ role: 'system', content: '← ' + dismissTarget.name + ' steps back.', speakerId: null });
             World.render();
             this.appendSystem('← ' + dismissTarget.name + ' steps back.');
+            this._saveStage();
           }
         }
       }
@@ -348,6 +386,8 @@ const Chat = {
     this._restored     = false;
     this.panel.classList.remove('open');
     App.setStatus('click a character to chat');
+    // Save empty stage state
+    this._saveStage();
     // Run compaction silently in the background — no await, no blocking
     this._compactHistory();
   },
