@@ -42,8 +42,9 @@ const App = {
     this._bindToolbar();
     this._bindModal();
     World.render();
-    // Restore stage AFTER render so characters actually appear
+    // Restore stage and then re-render with restored forwardIds
     Chat._restoreStage();
+    World.render();  // second render picks up restored forwardIds
     if (typeof Roster !== 'undefined') Roster.render();
     this.setStatus(
       this.state.team.length
