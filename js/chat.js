@@ -153,9 +153,20 @@ const Chat = {
     this.messagesEl.appendChild(thinking);
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
 
-    var messages = this.sharedHistory
+    // ── Two-layer memory: summary + recent 20 messages ──────────────────────
+    var hist = App.state.chatHistory[member.id] || { summary: '', recent: [] };
+    // Inject summary as a system context prefix if it exists
+    var memoryCtx = hist.summary
+      ? 'MEMORY OF PAST CONVERSATIONS WITH THIS PERSON: ' + hist.summary
+      : '';
+    // Build messages from sharedHistory (current session) limited to last 20
+    var sessionMsgs = this.sharedHistory
       .filter(function(m) { return m.role === 'user' || m.speakerId === member.id; })
+      .slice(-20)
       .map(function(m) { return { role: m.role === 'user' ? 'user' : 'assistant', content: m.content }; });
+    // Ensure first message is from user (API requirement)
+    while (sessionMsgs.length && sessionMsgs[0].role !== 'user') sessionMsgs.shift();
+    var messages = sessionMsgs;
 
     // ── System prompt ────────────────────────────────────────────────────────
     var roomCtx = (typeof ROOMS !== 'undefined' && ROOMS[World.currentRoom])
@@ -197,6 +208,7 @@ const Chat = {
       roomCtx,
       groupCtx,
       briefingCtx,
+      memoryCtx,
       summonCtx,
       actionCtx,
       'Keep responses SHORT (2-3 sentences). Stay in character. Never break character.',
@@ -290,29 +302,13 @@ const Chat = {
       this.messagesEl.appendChild(div);
       this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
 
-      // Save to per-character history — user message visible to all participants
-      if (!App.state.chatHistory[member.id]) App.state.chatHistory[member.id] = [];
-      // Avoid duplicate user messages if already saved from a previous turn
-      var lastSaved = App.state.chatHistory[member.id];
-      var alreadyHasUser = lastSaved.length && lastSaved[lastSaved.length-2] &&
-        lastSaved[lastSaved.length-2].role === 'user' &&
-        lastSaved[lastSaved.length-2].content === userText;
-      if (!alreadyHasUser) {
-        App.state.chatHistory[member.id].push({ role: 'user',      content: userText,  speakerId: null      });
-      }
-      App.state.chatHistory[member.id].push(  { role: 'assistant', content: reply,     speakerId: member.id });
-      // Also save this user message to all other forward members' histories
-      // so if they're opened later they have the full conversation context
+      // ── Save to two-layer per-character history ──────────────────────────
+      Chat._appendToHistory(member.id, { role: 'user',      content: userText, speakerId: null      });
+      Chat._appendToHistory(member.id, { role: 'assistant', content: reply,    speakerId: member.id });
+      // Fan user message out to all other forward members so they have context
       Chat.forwardIds.forEach(function(fid) {
         if (fid === member.id) return;
-        if (!App.state.chatHistory[fid]) App.state.chatHistory[fid] = [];
-        var fhist = App.state.chatHistory[fid];
-        var lastFUser = fhist.length && fhist[fhist.length-1] &&
-          fhist[fhist.length-1].role === 'user' &&
-          fhist[fhist.length-1].content === userText;
-        if (!lastFUser) {
-          App.state.chatHistory[fid].push({ role: 'user', content: userText, speakerId: null });
-        }
+        Chat._appendToHistory(fid, { role: 'user', content: userText, speakerId: null });
       });
 
       // Re-render header in case forwardIds changed
@@ -352,24 +348,22 @@ const Chat = {
     this._restored     = false;
     this.panel.classList.remove('open');
     App.setStatus('click a character to chat');
+    // Run compaction silently in the background — no await, no blocking
+    this._compactHistory();
   },
 
-  // Merge a member's saved history into sharedHistory when they join.
-  // Appends only messages not already present (avoids duplicates when
-  // multiple members share the same user messages).
+  // Merge a member's saved recent history into sharedHistory when they join.
   _mergeHistory(memberId) {
     if (!App || !App.state || !App.state.chatHistory) return;
-    var saved = App.state.chatHistory[memberId] || [];
-    if (!saved.length) return;
+    var hist = App.state.chatHistory[memberId];
+    if (!hist || !hist.recent || !hist.recent.length) return;
 
-    // Find the last message already in sharedHistory from this member
-    // or any user message — so we only append genuinely new content
     var existing = new Set(
       this.sharedHistory.map(function(m) { return m.role + '|' + m.content; })
     );
-
     var added = 0;
-    saved.forEach(function(m) {
+    // Only merge last 20 recent messages to keep the view manageable
+    hist.recent.slice(-20).forEach(function(m) {
       var key = m.role + '|' + m.content;
       if (!existing.has(key)) {
         Chat.sharedHistory.push(m);
@@ -377,11 +371,86 @@ const Chat = {
         added++;
       }
     });
+    if (added > 0) this._restored = true;
+  },
 
-    if (added > 0) {
-      // Sort by insertion — saved history is chronological so this is fine
-      this._restored = true;
+  // Append a message to a member's recent buffer; migrate old flat array if needed
+  _appendToHistory(memberId, msg) {
+    if (!App || !App.state) return;
+    if (!App.state.chatHistory) App.state.chatHistory = {};
+    var h = App.state.chatHistory[memberId];
+    // Migrate flat array from old format
+    if (Array.isArray(h)) {
+      App.state.chatHistory[memberId] = { summary: '', recent: h };
+      h = App.state.chatHistory[memberId];
     }
+    if (!h) { App.state.chatHistory[memberId] = { summary: '', recent: [] }; h = App.state.chatHistory[memberId]; }
+    // Deduplicate: skip if last message is identical user message
+    var last = h.recent[h.recent.length - 1];
+    if (last && last.role === msg.role && last.content === msg.content) return;
+    h.recent.push(msg);
+  },
+
+  // Background summarisation — called after dismissAll, no await needed in caller
+  async _compactHistory() {
+    if (!App || !App.state || !App.state.chatHistory) return;
+    var BUFFER = 20;   // keep this many recent messages verbatim
+    var TRIGGER = 30;  // summarise when recent exceeds this
+
+    var ids = Object.keys(App.state.chatHistory);
+    var didCompact = false;
+
+    for (var i = 0; i < ids.length; i++) {
+      var id = ids[i];
+      var h = App.state.chatHistory[id];
+      if (Array.isArray(h)) {
+        // Migrate old flat format
+        App.state.chatHistory[id] = { summary: '', recent: h };
+        h = App.state.chatHistory[id];
+        didCompact = true;
+      }
+      if (!h || !h.recent || h.recent.length <= TRIGGER) continue;
+
+      // Take the oldest messages beyond the buffer for summarisation
+      var toSummarise = h.recent.slice(0, h.recent.length - BUFFER);
+      h.recent = h.recent.slice(h.recent.length - BUFFER);
+
+      // Build a readable transcript of what to summarise
+      var transcript = toSummarise.map(function(m) {
+        var who = m.speakerId
+          ? (App.state.team.find(function(t){ return t.id === m.speakerId; }) || {name:'AI'}).name
+          : 'Baz';
+        return who + ': ' + m.content;
+      }).join('\n');
+
+      // Prepend existing summary if there is one
+      if (h.summary) transcript = 'PREVIOUS SUMMARY:\n' + h.summary + '\n\nNEWER EXCHANGES:\n' + transcript;
+
+      try {
+        var resp = await fetch('https://script.google.com/macros/s/AKfycbxUtte8plGg9O0pPXeedpm9oKhXBndYHOMYRBWxhbHM26ZChBcbhnzBiv7x_zJPVGRq/exec', {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({
+            pin: App.pin,
+            model: 'claude-sonnet-4-6',
+            max_tokens: 300,
+            system: 'You are a conversation memory assistant. Summarise the following chat exchanges into 3-5 concise sentences. Preserve: decisions made, key topics discussed, open questions, important context. Be factual and specific. Output only the summary, no preamble.',
+            messages: [{ role: 'user', content: transcript }]
+          })
+        });
+        var data = await resp.json();
+        if (data.content && data.content[0]) {
+          h.summary = data.content[0].text.trim();
+          didCompact = true;
+        }
+      } catch(e) {
+        // Summarisation failed — put messages back so nothing is lost
+        h.recent = toSummarise.concat(h.recent);
+        console.warn('Compaction failed for', id, e);
+      }
+    }
+
+    if (didCompact) Storage.cloudSave(App.state);
   },
 
   close() { this.dismissAll(); },
