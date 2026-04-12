@@ -14,7 +14,7 @@ const FLOOR_H      = 58;
 // Row 4 : hurt      6 frames  (hurt front)
 // Row 5 : thrust    8 frames  (thrust-right pointing)
 const SPRITE_FRAME = 64;
-const SPRITE_CDN   = 'https://cdn.jsdelivr.net/gh/Drak0ri/thestage-sprites@eaa9beaf636879136d8130c11f812ad77ee49f98/char_';
+const SPRITE_CDN   = 'https://cdn.jsdelivr.net/gh/Drak0ri/thestage-sprites@a162ab4ca4e4edaed1728b6401b54f121b6de0ca/char_';
 
 // Spritesheet row layout (corrected — all rows use layers with full clothing):
 // Row 0: idle      2 frames  (walk-right frames 0,4 — standing poses)
@@ -34,10 +34,10 @@ const ANIM_ROWS = {
 
 // Map old action names → new animation names
 const ACTION_ANIM_MAP = {
-  nod:      'idle',   shake:    'idle',   shrug:    'idle',
-  jump:     'action', wave:     'action', spin:     'run',
-  think:    'thrust', facepalm: 'hurt',   point:    'thrust',
-  bow:      'thrust', dance:    'run',    stomp:    'action',
+  nod: 'idle', shake: 'idle', shrug: 'idle',
+  jump: 'action', wave: 'action', spin: 'action',
+  think: 'idle', facepalm: 'action', point: 'action',
+  bow: 'idle', dance: 'action', stomp: 'action',
 };
 
 // Preload all 12 sprite images
@@ -75,39 +75,37 @@ for (var _pi = 0; _pi < 12; _pi++) _getSprite(_pi);
 
 // ── Sprite canvas renderer ──────────────────────────────────────────────────
 function SpriteRenderer(colorIdx, canvas) {
-  this.colorIdx  = colorIdx;
-  this.canvas    = canvas;
-  this.ctx       = canvas.getContext('2d');
-  // Locked anim state — only changed atomically via _setAnimState
-  this._animName = 'idle';
-  this._animRow  = ANIM_ROWS['idle'].row;
-  this._animFrames = ANIM_ROWS['idle'].frames;
-  this._animFps  = ANIM_ROWS['idle'].fps;
-  this.frame     = 0;
-  this.flipX     = false;
-  this._timer    = null;
-  this._oneshot  = false;
-  this._onDone   = null;
-  // Hook onload once — redraws when sprite arrives from CDN
+  this.colorIdx    = colorIdx;
+  this.canvas      = canvas;
+  this.ctx         = canvas.getContext('2d');
+  this._animName   = 'idle';
+  this._dir        = DIR.DOWN;   // current facing direction
+  this._animRow    = 0;          // computed from anim + dir
+  this._animFrames = 2;
+  this._animFps    = 3;
+  this.frame       = 0;
+  this._timer      = null;
+  this._oneshot    = false;
+  this._onDone     = null;
   var self = this;
   _getSprite(colorIdx, function() { self._draw(); });
 }
 
-// Atomically update all anim state so _draw and loop always agree
-SpriteRenderer.prototype._setAnimState = function(name, flipX, oneshot, onDone) {
+// Atomically update anim state — row = ANIM_BASE[anim] + dir
+SpriteRenderer.prototype._setAnimState = function(name, dir, oneshot, onDone) {
   var info = ANIM_ROWS[name] || ANIM_ROWS['idle'];
   this._animName   = name;
-  this._animRow    = info.row;
+  this._dir        = (dir !== undefined && dir !== null) ? dir : this._dir;
+  this._animRow    = (ANIM_BASE[name] || 0) + this._dir;
   this._animFrames = info.frames;
   this._animFps    = info.fps;
   this.frame       = 0;
-  this.flipX       = !!flipX;
   this._oneshot    = !!oneshot;
   this._onDone     = onDone || null;
 };
 
-SpriteRenderer.prototype.setAnim = function(name, flipX, oneshot, onDone) {
-  this._setAnimState(name, flipX, oneshot, onDone);
+SpriteRenderer.prototype.setAnim = function(name, dir, oneshot, onDone) {
+  this._setAnimState(name, dir, oneshot, onDone);
   this._draw();
 };
 
@@ -118,16 +116,9 @@ SpriteRenderer.prototype._draw = function() {
   var H   = this.canvas.height;
   ctx.clearRect(0, 0, W, H);
   if (!img.complete || !img.naturalWidth) return;
-  // Use locked row/frame — never reads this.anim mid-draw
   var sx = this.frame * SPRITE_FRAME;
   var sy = this._animRow * SPRITE_FRAME;
-  if (this.flipX) {
-    ctx.save();
-    ctx.translate(W, 0);
-    ctx.scale(-1, 1);
-  }
   ctx.drawImage(img, sx, sy, SPRITE_FRAME, SPRITE_FRAME, 0, 0, W, H);
-  if (this.flipX) ctx.restore();
 };
 
 SpriteRenderer.prototype.startLoop = function() {
@@ -161,17 +152,26 @@ SpriteRenderer.prototype.destroy = function() {
 
 SpriteRenderer.prototype.playOnce = function(animName, onDone) {
   this._stopLoop();
-  this._setAnimState(animName, this.flipX, true, onDone);
+  this._setAnimState(animName, this._dir, true, onDone);
   this._draw();
   this.startLoop();
 };
 
-// Switch to a new looping animation (stops old loop, starts new at correct fps)
-SpriteRenderer.prototype.switchAnim = function(animName, flipX) {
+// Switch to a new looping animation with optional direction change
+SpriteRenderer.prototype.switchAnim = function(animName, dir) {
   this._stopLoop();
-  this._setAnimState(animName, !!flipX, false, null);
+  this._setAnimState(animName, (dir !== undefined) ? dir : this._dir, false, null);
   this._draw();
   this.startLoop();
+};
+
+// Set direction only (keep same animation, update row)
+SpriteRenderer.prototype.setDir = function(dir) {
+  if (dir === this._dir) return;
+  this._dir     = dir;
+  this._animRow = (ANIM_BASE[this._animName] || 0) + dir;
+  this.frame    = 0;
+  this._draw();
 };
 
 // ── World object ────────────────────────────────────────────────────────────
@@ -392,8 +392,8 @@ const World = {
       var renderer = new SpriteRenderer(colorIdx, c);
       World.renderers[member.id] = renderer;
 
-      // Initial animation
-      renderer.switchAnim('idle', false);
+      // Initial animation — front for talker, down for others
+      renderer.switchAnim('idle', isTalking ? DIR.DOWN : DIR.DOWN);
 
       // Wrapper
       var wrapper = document.createElement('div');
@@ -459,10 +459,10 @@ const World = {
           // Occasionally sit
           var r = Math.random();
           if (r < 0.3) {
-            renderer.switchAnim('sit', false);
+            renderer.switchAnim('idle', DIR.UP);  // look away briefly
             setTimeout(function() {
               if (document.getElementById('char-' + id) && !state.moving) {
-                renderer.switchAnim('idle', false);
+                renderer.switchAnim('idle', DIR.DOWN);
               }
             }, 2000 + Math.random() * 3000);
           }
@@ -482,11 +482,11 @@ const World = {
       state.dir     = state.targetX > state.x ? 1 : -1;
       state.moving  = true;
       // Switch to walk, flip based on direction
-      renderer.switchAnim('walk', state.dir < 0);
+      renderer.switchAnim('walk', state.dir > 0 ? DIR.RIGHT : DIR.LEFT);
     };
 
     // Start idle loop
-    renderer.switchAnim('idle', false);
+    renderer.switchAnim('idle', DIR.DOWN);
 
     var moveTimer = setInterval(function() {
       var wrapper = document.getElementById('char-' + id);
@@ -503,8 +503,8 @@ const World = {
           state.x = state.targetX;
           state.moving = false;
           wrapper.style.left = Math.round(state.x) + 'px';
-          // Arrive — switch to idle
-          renderer.switchAnim('idle', false);
+          // Arrive — face front
+          renderer.switchAnim('idle', DIR.DOWN);
           var stillTimer = setTimeout(function() {
             if (document.getElementById('char-' + id)) pickTarget();
           }, 2000 + Math.random() * 4000);
@@ -546,7 +546,7 @@ const World = {
       if (Chat.forwardIds.indexOf(id) !== -1 && Chat.talkingId !== id) {
         World._startWander(id, renderer, base, W);
       } else {
-        renderer.switchAnim('idle', false);
+        renderer.switchAnim('idle', DIR.DOWN);
       }
     });
   },
