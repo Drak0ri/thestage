@@ -7,6 +7,27 @@ const App = {
   useLocal: false,   // hybrid toggle: true = Ollama, false = Cloud (Claude)
 
   toggleAiMode() {
+    if (this.localMode && !this.useLocal) {
+      // In pure local mode, switching to cloud needs a PIN
+      var pin = prompt('Enter PIN to switch to Cloud mode:');
+      if (!pin) return;
+      this.pin = pin;
+      this.localMode = false;
+      this.useLocal = false;
+      sessionStorage.removeItem('stage_local');
+      sessionStorage.setItem('stage_pin', pin);
+      sessionStorage.setItem('stage_useLocal', '0');
+      // Reload state from cloud
+      Storage.cloudLoad().then(function(state) {
+        if (state && state.team && state.team.length) {
+          App.state = state;
+          World.render();
+        }
+      });
+      this._updateAiModeBtn();
+      this.setStatus('☁️ Switched to CLOUD mode (Claude)');
+      return;
+    }
     this.useLocal = !this.useLocal;
     sessionStorage.setItem('stage_useLocal', this.useLocal ? '1' : '0');
     this._updateAiModeBtn();
@@ -19,12 +40,10 @@ const App = {
     var btn = document.getElementById('btn-ai-mode');
     if (!btn) return;
     if (this.localMode) {
-      // Pure local session — no cloud available
       btn.textContent = '💻 LOCAL';
       btn.style.borderColor = '#44cc66';
-      btn.style.opacity = '0.6';
-      btn.title = 'Local-only session (no cloud PIN)';
-      btn.onclick = null;
+      btn.style.opacity = '1';
+      btn.title = 'Using Ollama — click to switch to Cloud (PIN required)';
     } else if (this.useLocal) {
       btn.textContent = '💻 LOCAL';
       btn.style.borderColor = '#44cc66';
@@ -114,7 +133,7 @@ const App = {
 
     // AI mode toggle
     document.getElementById('btn-ai-mode').addEventListener('click', function() {
-      if (!App.localMode) App.toggleAiMode();
+      App.toggleAiMode();
     });
 
     var btnBriefing = document.getElementById('btn-briefing');
