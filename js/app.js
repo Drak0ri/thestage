@@ -4,6 +4,39 @@ const App = {
   pin: null,
   localMode: false,
   localModel: 'qwen3.5:4b',
+  useLocal: false,   // hybrid toggle: true = Ollama, false = Cloud (Claude)
+
+  toggleAiMode() {
+    this.useLocal = !this.useLocal;
+    sessionStorage.setItem('stage_useLocal', this.useLocal ? '1' : '0');
+    this._updateAiModeBtn();
+    this.setStatus(this.useLocal
+      ? '💻 Switched to LOCAL mode (Ollama — ' + this.localModel + ')'
+      : '☁️ Switched to CLOUD mode (Claude)');
+  },
+
+  _updateAiModeBtn() {
+    var btn = document.getElementById('btn-ai-mode');
+    if (!btn) return;
+    if (this.localMode) {
+      // Pure local session — no cloud available
+      btn.textContent = '💻 LOCAL';
+      btn.style.borderColor = '#44cc66';
+      btn.style.opacity = '0.6';
+      btn.title = 'Local-only session (no cloud PIN)';
+      btn.onclick = null;
+    } else if (this.useLocal) {
+      btn.textContent = '💻 LOCAL';
+      btn.style.borderColor = '#44cc66';
+      btn.style.opacity = '1';
+      btn.title = 'Using Ollama (' + this.localModel + ') — click to switch to Cloud';
+    } else {
+      btn.textContent = '☁️ CLOUD';
+      btn.style.borderColor = '';
+      btn.style.opacity = '1';
+      btn.title = 'Using Claude API — click to switch to Local';
+    }
+  },
 
   startLocal() {
     App.localMode = true;
@@ -53,6 +86,11 @@ const App = {
     if (typeof Roster !== 'undefined') Roster.init();
     this._bindToolbar();
     this._bindModal();
+    // Restore hybrid toggle
+    if (!this.localMode && sessionStorage.getItem('stage_useLocal') === '1') {
+      this.useLocal = true;
+    }
+    this._updateAiModeBtn();
     // Restore stage first, then render once with restored forwardIds
     Chat._restoreStage();
     World.render();
@@ -72,6 +110,11 @@ const App = {
     // Room buttons
     document.querySelectorAll('.room-btn').forEach(function(btn) {
       btn.addEventListener('click', function() { World.switchRoom(btn.dataset.room); });
+    });
+
+    // AI mode toggle
+    document.getElementById('btn-ai-mode').addEventListener('click', function() {
+      if (!App.localMode) App.toggleAiMode();
     });
 
     var btnBriefing = document.getElementById('btn-briefing');
