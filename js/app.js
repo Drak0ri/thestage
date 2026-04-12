@@ -2,6 +2,18 @@
 
 const App = {
   pin: null,
+  localMode: false,
+  localModel: 'qwen2.5',
+
+  startLocal() {
+    App.localMode = true;
+    App.localModel = (document.getElementById('local-model').value || 'qwen2.5').trim();
+    App.pin = 'local';
+    sessionStorage.setItem('stage_local', '1');
+    sessionStorage.setItem('stage_local_model', App.localModel);
+    document.getElementById('pin-overlay').style.display = 'none';
+    App.init();
+  },
 
   submitPin() {
     var val = document.getElementById('pin-input').value.trim();
@@ -162,6 +174,14 @@ const App = {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Check for local mode first
+  if (sessionStorage.getItem('stage_local') === '1') {
+    App.localMode = true;
+    App.localModel = sessionStorage.getItem('stage_local_model') || 'qwen2.5';
+    App.pin = 'local';
+    App.init();
+    return;
+  }
   // PIN check — try sessionStorage first so reload doesn't re-prompt
   var saved = sessionStorage.getItem('stage_pin');
   if (saved) { App.pin = saved; App.init(); }
