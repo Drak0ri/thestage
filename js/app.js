@@ -3,11 +3,11 @@
 const App = {
   pin: null,
   localMode: false,
-  localModel: 'qwen2.5',
+  localModel: 'qwen3.5:4b',
 
   startLocal() {
     App.localMode = true;
-    App.localModel = (document.getElementById('local-model').value || 'qwen2.5').trim();
+    App.localModel = (document.getElementById('local-model').value || 'qwen3.5:4b').trim();
     App.pin = 'local';
     sessionStorage.setItem('stage_local', '1');
     sessionStorage.setItem('stage_local_model', App.localModel);
@@ -177,7 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Check for local mode first
   if (sessionStorage.getItem('stage_local') === '1') {
     App.localMode = true;
-    App.localModel = sessionStorage.getItem('stage_local_model') || 'qwen2.5';
+    App.localModel = sessionStorage.getItem('stage_local_model') || 'qwen3.5:4b';
     App.pin = 'local';
     App.init();
     return;
