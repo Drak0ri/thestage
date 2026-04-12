@@ -36,14 +36,32 @@ const ACTION_ANIM_MAP = {
 
 // Preload all 12 sprite images
 const _spriteCache = {};
-function _getSprite(colorIdx) {
+// Per-sprite load listeners (supports multiple renderers waiting on same image)
+var _spriteListeners = {};
+
+function _getSprite(colorIdx, onLoadCb) {
   var idx = (colorIdx || 0) % 12;
   if (!_spriteCache[idx]) {
     var img = new Image();
+    img.crossOrigin = 'anonymous';
+    _spriteListeners[idx] = [];
+    img.onload = function() {
+      var cbs = _spriteListeners[idx] || [];
+      for (var i = 0; i < cbs.length; i++) cbs[i](img);
+      _spriteListeners[idx] = [];
+    };
     img.src = SPRITE_CDN + idx + '.png';
     _spriteCache[idx] = img;
   }
-  return _spriteCache[idx];
+  var img = _spriteCache[idx];
+  if (onLoadCb) {
+    if (img.complete && img.naturalWidth) {
+      onLoadCb(img);
+    } else {
+      (_spriteListeners[idx] = _spriteListeners[idx] || []).push(onLoadCb);
+    }
+  }
+  return img;
 }
 
 // Preload all on script load
@@ -75,12 +93,13 @@ SpriteRenderer.prototype.setAnim = function(name, flipX, oneshot, onDone) {
 
 SpriteRenderer.prototype._draw = function() {
   var info   = ANIM_ROWS[this.anim];
-  var img    = _getSprite(this.colorIdx);
+  var self   = this;
+  var img    = _getSprite(this.colorIdx, function() { self._draw(); });
   var ctx    = this.ctx;
   var W      = this.canvas.width;
   var H      = this.canvas.height;
   ctx.clearRect(0, 0, W, H);
-  if (!img.complete || !img.naturalWidth) return; // not loaded yet
+  if (!img.complete || !img.naturalWidth) return; // not loaded yet — onload will retry
   var sx = this.frame * SPRITE_FRAME;
   var sy = info.row   * SPRITE_FRAME;
   if (this.flipX) {
