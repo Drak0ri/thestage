@@ -28,6 +28,10 @@
         <button class="px-btn" id="btn-add">&#65291; ADD</button>
         <button class="px-btn" id="btn-dismiss" style="display:none">&#10005; DISMISS</button>
         <button class="px-btn" id="roster-toggle" title="Team roster">&#128101; TEAM</button>
+        <div id="font-controls">
+          <button class="font-btn" id="font-down" title="Decrease font size">A-</button>
+          <button class="font-btn" id="font-up" title="Increase font size">A+</button>
+        </div>
       </div>
     </header>
 
@@ -132,6 +136,26 @@
         ta.addEventListener('input', function() { ct.textContent = ta.value.length; });
       }
     });
+  </script>
+  <script>
+    // Font size controls
+    (function() {
+      var scale = parseFloat(localStorage.getItem('uiScale') || '1');
+      var min = 0.7, max = 1.6, step = 0.1;
+      function apply() {
+        document.documentElement.style.setProperty('--ui-scale', scale);
+        localStorage.setItem('uiScale', scale);
+      }
+      apply();
+      document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('font-up').addEventListener('click', function() {
+          if (scale < max) { scale = Math.round((scale + step) * 10) / 10; apply(); }
+        });
+        document.getElementById('font-down').addEventListener('click', function() {
+          if (scale > min) { scale = Math.round((scale - step) * 10) / 10; apply(); }
+        });
+      });
+    })();
   </script>
 </body>
 </html>
