@@ -459,7 +459,7 @@ const World = {
           // Occasionally sit
           var r = Math.random();
           if (r < 0.3) {
-            renderer.switchAnim('idle', DIR.UP);  // look away briefly
+            renderer.switchAnim('idle', DIR.DOWN);  // face front
             setTimeout(function() {
               if (document.getElementById('char-' + id) && !state.moving) {
                 renderer.switchAnim('idle', DIR.DOWN);
