@@ -472,16 +472,18 @@ const World = {
     };
 
     var pickTarget = function() {
-      var range  = 20 + Math.random() * 40;
-      var dir    = Math.random() < 0.5 ? -1 : 1;
-      var target = state.x + dir * range;
-      if (Math.abs(target - state.base) > 80) {
-        target = state.base + (Math.random() - 0.5) * 60;
+      // 70% of the time just stand still for a while
+      if (Math.random() < 0.7) {
+        World.animTimers[id + '_still'] = setTimeout(function() {
+          if (document.getElementById('char-' + id)) pickTarget();
+        }, 4000 + Math.random() * 8000);
+        return;
       }
-      state.targetX = Math.max(40, Math.min(W - 80, target));
+      // Walk to a random position anywhere across the full stage width
+      var target = 40 + Math.random() * (W - 120);
+      state.targetX = target;
       state.dir     = state.targetX > state.x ? 1 : -1;
       state.moving  = true;
-      // Switch to walk, flip based on direction
       renderer.switchAnim('walk', state.dir > 0 ? DIR.RIGHT : DIR.LEFT);
     };
 
@@ -507,7 +509,7 @@ const World = {
           renderer.switchAnim('idle', DIR.DOWN);
           var stillTimer = setTimeout(function() {
             if (document.getElementById('char-' + id)) pickTarget();
-          }, 2000 + Math.random() * 4000);
+          }, 5000 + Math.random() * 10000);
           World.animTimers[id + '_still'] = stillTimer;
         } else {
           var maxStep = SPEED * dt;
@@ -521,7 +523,7 @@ const World = {
     World.animTimers[id + '_move']  = moveTimer;
     var pauseTimer = setTimeout(function() {
       if (document.getElementById('char-' + id)) pickTarget();
-    }, 1000 + Math.random() * 2500);
+    }, 2000 + Math.random() * 5000);
     World.animTimers[id + '_pause'] = pauseTimer;
     _scheduleIdleBehaviour();
   },
