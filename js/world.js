@@ -18,20 +18,17 @@ const CLAUDE_SCALE_BONUS = 0.4; // Claude is this much bigger than others
 const SPRITE_FRAME = 64;
 const SPRITE_CDN   = 'https://cdn.jsdelivr.net/gh/Drak0ri/thestage-sprites@a8bc5c504e79f1a4ee436f8a2815673a2caa5c81/char_';
 
-// Spritesheet row layout (corrected — all rows use layers with full clothing):
-// Row 0: idle      2 frames  (walk-right frames 0,4 — standing poses)
-// Row 1: walk      9 frames  (walk-right full cycle)
-// Row 2: run       6 frames  (slash-right — energetic side movement)
-// Row 3: action    7 frames  (spellcast-right — wave/gesture)
-// Row 4: hurt      6 frames  (hurt front)
-// Row 5: thrust    8 frames  (thrust-right — pointing/emphasis)
+// Spritesheet: 576×768px, 9 cols × 12 rows of 64×64 frames
+// 4 directions × 3 animations. Direction order per group: down, left, right, up
+// Rows  0-3:  idle   (2 frames — standing walk pose)
+// Rows  4-7:  walk   (9 frames)
+// Rows  8-11: action (7 frames — spellcast gesture)
+const DIR = { DOWN: 0, LEFT: 1, RIGHT: 2, UP: 3 };
+const ANIM_BASE   = { idle: 0, walk: 4, action: 8 };
 const ANIM_ROWS = {
-  idle:    { row: 0, frames: 2, fps: 3  },
-  walk:    { row: 1, frames: 9, fps: 10 },
-  run:     { row: 2, frames: 6, fps: 10 },
-  action:  { row: 3, frames: 7, fps: 10 },
-  hurt:    { row: 4, frames: 6, fps: 10 },
-  thrust:  { row: 5, frames: 8, fps: 10 },
+  idle:   { row: 0, frames: 2, fps: 3  },
+  walk:   { row: 4, frames: 9, fps: 10 },
+  action: { row: 8, frames: 7, fps: 10 },
 };
 
 // Map old action names → new animation names
