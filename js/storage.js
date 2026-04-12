@@ -19,6 +19,7 @@ const Storage = {
 
   async cloudSave(state) {
     this.save(state);
+    if (App.localMode) return;
     try {
       await fetch(RELAY_URL, {
         method: 'POST',
@@ -29,6 +30,7 @@ const Storage = {
   },
 
   async cloudLoad() {
+    if (App.localMode) return this.load();
     try {
       var resp  = await fetch(RELAY_URL, {
         method: 'POST',
