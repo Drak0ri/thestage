@@ -196,6 +196,7 @@ const World = {
       World.render();
       if (typeof WorldObjects !== 'undefined') WorldObjects.resize();
     });
+    this.initKeyboard();
     this.container.addEventListener('click', function(e) {
       var t = e.target;
       if (t === World.container || t.id === 'bg-canvas' ||
@@ -625,6 +626,150 @@ const World = {
       if (typeof t === 'number') { clearInterval(t); clearTimeout(t); }
     });
     this.animTimers = {};
+  },
+
+  // ── Keyboard control ────────────────────────────────────────────────────────
+  _keysHeld:    {},
+  _keyTimer:    null,
+  _jumpActive:  false,
+  _duckActive:  false,
+
+  initKeyboard() {
+    var self = this;
+
+    document.addEventListener('keydown', function(e) {
+      // Don't hijack typing in chat input or any text field
+      var tag = document.activeElement && document.activeElement.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)) return;
+      e.preventDefault();
+      self._keysHeld[e.key] = true;
+      if (!self._keyTimer) self._startKeyLoop();
+      // Trigger up/down immediately on keydown
+      if (e.key === 'ArrowUp')   self._doJump();
+      if (e.key === 'ArrowDown') self._doDuck();
+    });
+
+    document.addEventListener('keyup', function(e) {
+      delete self._keysHeld[e.key];
+      if (e.key === 'ArrowDown') self._unduck();
+      if (Object.keys(self._keysHeld).filter(function(k){ return k.startsWith('Arrow'); }).length === 0) {
+        self._stopKeyLoop();
+        self._stopWalkAnim();
+      }
+    });
+  },
+
+  _getControlledId() {
+    // Controlled character = active talker, or first forward character
+    return Chat.talkingId || (Chat.forwardIds && Chat.forwardIds[0]) || null;
+  },
+
+  _startKeyLoop() {
+    var self = this;
+    var STEP = 3; // px per tick
+    this._keyTimer = setInterval(function() {
+      var id = self._getControlledId();
+      if (!id) return;
+      var wrapper = document.getElementById('char-' + id);
+      if (!wrapper) return;
+      var W = self.container ? (self.container.offsetWidth || 700) : 700;
+
+      if (self._keysHeld['ArrowLeft'] || self._keysHeld['ArrowRight']) {
+        var dir = self._keysHeld['ArrowRight'] ? 1 : -1;
+        var ws  = self.wanderState[id];
+        // Pause wander timers so they don't fight keyboard control
+        if (self.animTimers[id + '_move']) {
+          clearInterval(self.animTimers[id + '_move']);
+          self.animTimers[id + '_move'] = null;
+        }
+        clearTimeout(self.animTimers[id + '_still']);
+        clearTimeout(self.animTimers[id + '_pause']);
+        if (ws) ws.moving = false;
+        var curX = ws ? ws.x : parseInt(wrapper.style.left) || 0;
+        var newX = Math.max(0, Math.min(W - 80, curX + dir * STEP));
+
+        if (ws) { ws.x = newX; ws.moving = false; }
+        wrapper.style.left = Math.round(newX) + 'px';
+
+        // Walk animation in direction of movement (don't interrupt jump)
+        if (!self._jumpActive && !self._duckActive) {
+          var renderer = self.renderers[id];
+          if (renderer) renderer.switchAnim('walk', dir > 0 ? DIR.RIGHT : DIR.LEFT);
+        }
+      }
+    }, 16); // ~60fps
+  },
+
+  _stopKeyLoop() {
+    if (this._keyTimer) { clearInterval(this._keyTimer); this._keyTimer = null; }
+  },
+
+  _stopWalkAnim() {
+    if (this._jumpActive || this._duckActive) return;
+    var id = this._getControlledId();
+    var renderer = id && this.renderers[id];
+    if (renderer) renderer.switchAnim('idle', DIR.DOWN);
+  },
+
+  _doJump() {
+    if (this._jumpActive) return;
+    var id = this._getControlledId();
+    var wrapper = id && document.getElementById('char-' + id);
+    var renderer = id && this.renderers[id];
+    if (!wrapper || !renderer) return;
+
+    this._jumpActive = true;
+    renderer.switchAnim('action', DIR.DOWN);
+
+    // CSS jump arc — translateY up then back down
+    var startBottom = parseInt(wrapper.style.bottom) || FLOOR_H;
+    var peak = 60; // px to jump
+    var duration = 400; // ms
+    var start = null;
+    var self = this;
+
+    function jumpFrame(ts) {
+      if (!start) start = ts;
+      var t = Math.min((ts - start) / duration, 1);
+      // Sine arc: 0 → peak → 0
+      var offset = Math.round(Math.sin(t * Math.PI) * peak);
+      wrapper.style.bottom = (startBottom + offset) + 'px';
+      if (t < 1) {
+        requestAnimationFrame(jumpFrame);
+      } else {
+        wrapper.style.bottom = startBottom + 'px';
+        self._jumpActive = false;
+        if (!self._keysHeld['ArrowLeft'] && !self._keysHeld['ArrowRight']) {
+          renderer.switchAnim('idle', DIR.DOWN);
+        }
+      }
+    }
+    requestAnimationFrame(jumpFrame);
+  },
+
+  _doDuck() {
+    if (this._duckActive) return;
+    var id = this._getControlledId();
+    var wrapper = id && document.getElementById('char-' + id);
+    var renderer = id && this.renderers[id];
+    if (!wrapper || !renderer) return;
+
+    this._duckActive = true;
+    // Duck = face down direction and squish with CSS scaleY
+    renderer.switchAnim('idle', DIR.DOWN);
+    wrapper.style.transform = 'scaleY(0.55) translateY(45%)';
+    wrapper.style.transformOrigin = 'bottom center';
+  },
+
+  _unduck() {
+    this._duckActive = false;
+    var id = this._getControlledId();
+    var wrapper = id && document.getElementById('char-' + id);
+    if (wrapper) wrapper.style.transform = '';
+    if (!this._keysHeld['ArrowLeft'] && !this._keysHeld['ArrowRight']) {
+      this._stopWalkAnim();
+    }
   },
 
   refresh() {
