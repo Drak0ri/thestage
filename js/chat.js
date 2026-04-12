@@ -319,7 +319,7 @@ const Chat = {
 
     try {
       var resp;
-      if (App.localMode) {
+      if (App.localMode || App.useLocal) {
         resp = await fetch('http://localhost:11434/v1/chat/completions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -565,7 +565,7 @@ const Chat = {
 
       try {
         var compactResp;
-        if (App.localMode) {
+        if (App.localMode || App.useLocal) {
           compactResp = await fetch('http://localhost:11434/v1/chat/completions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
