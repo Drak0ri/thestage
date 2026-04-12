@@ -28,11 +28,19 @@ body {
   color: var(--text-main);
   font-family: 'Press Start 2P', monospace;
   font-size: calc(10px * var(--ui-scale));
-  min-height: 100vh;
-  overflow-x: hidden;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ── HEADER ─────────────────────────────────────── */
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
 #site-header {
   height: var(--header-h);
   background: var(--bg1);
@@ -183,7 +191,8 @@ body {
 #chat-panel {
   display: none;
   flex-direction: column;
-  height: var(--chat-h);
+  flex: 1;
+  min-height: 0;
   background: var(--bg1);
   border-top: 2px solid var(--border);
 }
