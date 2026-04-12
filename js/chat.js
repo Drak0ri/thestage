@@ -318,13 +318,30 @@ const Chat = {
     ].filter(Boolean).join(' ');
 
     try {
-      var resp = await fetch('https://script.google.com/macros/s/AKfycbxUtte8plGg9O0pPXeedpm9oKhXBndYHOMYRBWxhbHM26ZChBcbhnzBiv7x_zJPVGRq/exec', {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ pin: App.pin, model: 'claude-sonnet-4-6', max_tokens: 1000, system: system, messages: messages })
-      });
-      var data = await resp.json();
-      var rawReply = data.content && data.content[0] ? data.content[0].text : '...';
+      var resp;
+      if (App.localMode) {
+        resp = await fetch('http://localhost:11434/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: App.localModel,
+            messages: [{ role: 'system', content: system }].concat(messages),
+            max_tokens: 1000
+          })
+        });
+        var ollamaData = await resp.json();
+        var rawReply = (ollamaData.choices && ollamaData.choices[0])
+          ? ollamaData.choices[0].message.content
+          : '...';
+      } else {
+        resp = await fetch('https://script.google.com/macros/s/AKfycbxUtte8plGg9O0pPXeedpm9oKhXBndYHOMYRBWxhbHM26ZChBcbhnzBiv7x_zJPVGRq/exec', {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({ pin: App.pin, model: 'claude-sonnet-4-6', max_tokens: 1000, system: system, messages: messages })
+        });
+        var data = await resp.json();
+        var rawReply = data.content && data.content[0] ? data.content[0].text : '...';
+      }
 
       // ── Parse all tags from reply ──────────────────────────────────────────
       var actionMatch  = rawReply.match(/\[ACTION:(\w+)\]/);
@@ -547,22 +564,44 @@ const Chat = {
       if (h.summary) transcript = 'PREVIOUS SUMMARY:\n' + h.summary + '\n\nNEWER EXCHANGES:\n' + transcript;
 
       try {
-        var resp = await fetch('https://script.google.com/macros/s/AKfycbxUtte8plGg9O0pPXeedpm9oKhXBndYHOMYRBWxhbHM26ZChBcbhnzBiv7x_zJPVGRq/exec', {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify({
-            pin: App.pin,
-            model: 'claude-sonnet-4-6',
-            max_tokens: 300,
-            system: 'You are a conversation memory assistant. Summarise the following chat exchanges into 3-5 concise sentences. Preserve: decisions made, key topics discussed, open questions, important context. Be factual and specific. Output only the summary, no preamble.',
-            messages: [{ role: 'user', content: transcript }]
-          })
-        });
-        var data = await resp.json();
-        if (data.content && data.content[0]) {
-          h.summary = data.content[0].text.trim();
-          h.recent = keptRecent; // only truncate after successful summarisation
-          didCompact = true;
+        var compactResp;
+        if (App.localMode) {
+          compactResp = await fetch('http://localhost:11434/v1/chat/completions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              model: App.localModel,
+              messages: [
+                { role: 'system', content: 'You are a conversation memory assistant. Summarise the following chat exchanges into 3-5 concise sentences. Preserve: decisions made, key topics discussed, open questions, important context. Be factual and specific. Output only the summary, no preamble.' },
+                { role: 'user', content: transcript }
+              ],
+              max_tokens: 300
+            })
+          });
+          var compactData = await compactResp.json();
+          if (compactData.choices && compactData.choices[0]) {
+            h.summary = compactData.choices[0].message.content.trim();
+            h.recent = keptRecent;
+            didCompact = true;
+          }
+        } else {
+          compactResp = await fetch('https://script.google.com/macros/s/AKfycbxUtte8plGg9O0pPXeedpm9oKhXBndYHOMYRBWxhbHM26ZChBcbhnzBiv7x_zJPVGRq/exec', {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify({
+              pin: App.pin,
+              model: 'claude-sonnet-4-6',
+              max_tokens: 300,
+              system: 'You are a conversation memory assistant. Summarise the following chat exchanges into 3-5 concise sentences. Preserve: decisions made, key topics discussed, open questions, important context. Be factual and specific. Output only the summary, no preamble.',
+              messages: [{ role: 'user', content: transcript }]
+            })
+          });
+          var data = await compactResp.json();
+          if (data.content && data.content[0]) {
+            h.summary = data.content[0].text.trim();
+            h.recent = keptRecent;
+            didCompact = true;
+          }
         }
       } catch(e) {
         // Summarisation failed — h.recent is untouched, nothing lost
