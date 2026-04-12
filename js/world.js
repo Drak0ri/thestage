@@ -5,33 +5,39 @@ const ACTIVE_PX    = 2.2;   // CSS display scale talking
 const FLOOR_H      = 58;
 
 // ── Spritesheet layout ──────────────────────────────────────────────────────
-// Each sprite PNG: 832 × 448 px  (13 cols × 7 rows of 64×64 frames)
-// Row 0 : idle       2 frames
-// Row 1 : walk       9 frames
-// Row 2 : run        8 frames
-// Row 3 : jump       6 frames
-// Row 4 : sit        3 frames
-// Row 5 : hurt       6 frames
-// Row 6 : spellcast  7 frames
+// Each sprite PNG: 576 × 384 px  (9 cols × 6 rows of 64×64 frames)
+// All animations use LPC rows ≤20 so clothing layers always cover them
+// Row 0 : idle      2 frames  (walk-right standing poses)
+// Row 1 : walk      9 frames  (walk-right full cycle)
+// Row 2 : run       6 frames  (slash-right energetic)
+// Row 3 : action    7 frames  (spellcast-right wave/gesture)
+// Row 4 : hurt      6 frames  (hurt front)
+// Row 5 : thrust    8 frames  (thrust-right pointing)
 const SPRITE_FRAME = 64;
 const SPRITE_CDN   = 'https://cdn.jsdelivr.net/gh/Drak0ri/thestage-sprites@main/char_';
 
+// Spritesheet row layout (corrected — all rows use layers with full clothing):
+// Row 0: idle      2 frames  (walk-right frames 0,4 — standing poses)
+// Row 1: walk      9 frames  (walk-right full cycle)
+// Row 2: run       6 frames  (slash-right — energetic side movement)
+// Row 3: action    7 frames  (spellcast-right — wave/gesture)
+// Row 4: hurt      6 frames  (hurt front)
+// Row 5: thrust    8 frames  (thrust-right — pointing/emphasis)
 const ANIM_ROWS = {
-  idle:      { row: 0, frames: 2,  fps: 4  },
-  walk:      { row: 1, frames: 9,  fps: 10 },
-  run:       { row: 2, frames: 8,  fps: 12 },
-  jump:      { row: 3, frames: 6,  fps: 10 },
-  sit:       { row: 4, frames: 3,  fps: 3  },
-  hurt:      { row: 5, frames: 6,  fps: 10 },
-  spellcast: { row: 6, frames: 7,  fps: 10 },
+  idle:    { row: 0, frames: 2, fps: 3  },
+  walk:    { row: 1, frames: 9, fps: 10 },
+  run:     { row: 2, frames: 6, fps: 10 },
+  action:  { row: 3, frames: 7, fps: 10 },
+  hurt:    { row: 4, frames: 6, fps: 10 },
+  thrust:  { row: 5, frames: 8, fps: 10 },
 };
 
 // Map old action names → new animation names
 const ACTION_ANIM_MAP = {
-  nod:      'idle', shake: 'idle', shrug: 'idle',
-  jump:     'jump', wave:  'spellcast', spin: 'run',
-  think:    'sit',  facepalm: 'hurt',   point: 'spellcast',
-  bow:      'sit',  dance: 'run',        stomp: 'jump',
+  nod:      'idle',   shake:    'idle',   shrug:    'idle',
+  jump:     'action', wave:     'action', spin:     'run',
+  think:    'thrust', facepalm: 'hurt',   point:    'thrust',
+  bow:      'thrust', dance:    'run',    stomp:    'action',
 };
 
 // Preload all 12 sprite images
