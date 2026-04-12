@@ -493,7 +493,7 @@ const World = {
       state.targetX = target;
       state.dir     = state.targetX > state.x ? 1 : -1;
       state.moving  = true;
-      renderer.switchAnim('walk', state.dir > 0 ? DIR.RIGHT : DIR.LEFT);
+      renderer.switchAnim('walk', state.dir > 0 ? DIR.LEFT : DIR.RIGHT);
     };
 
     // Start idle loop
@@ -703,7 +703,7 @@ const World = {
         // Walk animation in direction of movement (don't interrupt jump)
         if (!self._jumpActive && !self._duckActive) {
           var renderer = self.renderers[id];
-          if (renderer) renderer.switchAnim('walk', dir > 0 ? DIR.RIGHT : DIR.LEFT);
+          if (renderer) renderer.switchAnim('walk', dir > 0 ? DIR.LEFT : DIR.RIGHT);
         }
       }
     }, 16); // ~60fps
