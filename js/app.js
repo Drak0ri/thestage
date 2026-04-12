@@ -3,7 +3,7 @@
 const App = {
   pin: null,
   localMode: false,
-  localModel: 'qwen3.5:4b',
+  localModel: 'qwen3:1.7b',
   useLocal: false,   // hybrid toggle: true = Ollama, false = Cloud (Claude)
 
   toggleAiMode() {
@@ -40,7 +40,7 @@ const App = {
 
   startLocal() {
     App.localMode = true;
-    App.localModel = (document.getElementById('local-model').value || 'qwen3.5:4b').trim();
+    App.localModel = (document.getElementById('local-model').value || 'qwen3:1.7b').trim();
     App.pin = 'local';
     sessionStorage.setItem('stage_local', '1');
     sessionStorage.setItem('stage_local_model', App.localModel);
@@ -220,7 +220,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Check for local mode first
   if (sessionStorage.getItem('stage_local') === '1') {
     App.localMode = true;
-    App.localModel = sessionStorage.getItem('stage_local_model') || 'qwen3.5:4b';
+    App.localModel = sessionStorage.getItem('stage_local_model') || 'qwen3:1.7b';
     App.pin = 'local';
     App.init();
     return;
