@@ -23,7 +23,9 @@ const SPRITE_CDN   = 'https://cdn.jsdelivr.net/gh/Drak0ri/thestage-sprites@a8bc5
 // Rows  0-3:  idle   (2 frames — standing walk pose)
 // Rows  4-7:  walk   (9 frames)
 // Rows  8-11: action (7 frames — spellcast gesture)
-const DIR = { DOWN: 0, LEFT: 1, RIGHT: 2, UP: 3 };
+const DIR = { BACK: 0, FRONT: 1, RIGHT: 2, BACKRIGHT: 3 };
+// Aliases so walk direction code still works
+DIR.LEFT  = DIR.FRONT;   // walking left shows front-left face (row 1)
 const ANIM_BASE   = { idle: 0, walk: 4, action: 8 };
 const ANIM_ROWS = {
   idle:   { row: 0, frames: 2, fps: 3  },
@@ -78,7 +80,7 @@ function SpriteRenderer(colorIdx, canvas) {
   this.canvas      = canvas;
   this.ctx         = canvas.getContext('2d');
   this._animName   = 'idle';
-  this._dir        = DIR.DOWN;   // current facing direction
+  this._dir        = DIR.FRONT;   // current facing direction
   this._animRow    = 0;          // computed from anim + dir
   this._animFrames = 2;
   this._animFps    = 3;
@@ -394,7 +396,7 @@ const World = {
       World.renderers[member.id] = renderer;
 
       // Initial animation — front for talker, down for others
-      renderer.switchAnim('idle', isTalking ? DIR.DOWN : DIR.DOWN);
+      renderer.switchAnim('idle', isTalking ? DIR.FRONT : DIR.FRONT);
 
       // Wrapper
       var wrapper = document.createElement('div');
@@ -460,10 +462,10 @@ const World = {
           // Occasionally sit
           var r = Math.random();
           if (r < 0.3) {
-            renderer.switchAnim('idle', DIR.DOWN);  // face front
+            renderer.switchAnim('idle', DIR.FRONT);  // face front
             setTimeout(function() {
               if (document.getElementById('char-' + id) && !state.moving) {
-                renderer.switchAnim('idle', DIR.DOWN);
+                renderer.switchAnim('idle', DIR.FRONT);
               }
             }, 2000 + Math.random() * 3000);
           }
@@ -489,7 +491,7 @@ const World = {
     };
 
     // Start idle loop
-    renderer.switchAnim('idle', DIR.DOWN);
+    renderer.switchAnim('idle', DIR.FRONT);
 
     var moveTimer = setInterval(function() {
       var wrapper = document.getElementById('char-' + id);
@@ -507,7 +509,7 @@ const World = {
           state.moving = false;
           wrapper.style.left = Math.round(state.x) + 'px';
           // Arrive — face front
-          renderer.switchAnim('idle', DIR.DOWN);
+          renderer.switchAnim('idle', DIR.FRONT);
           var stillTimer = setTimeout(function() {
             if (document.getElementById('char-' + id)) pickTarget();
           }, 5000 + Math.random() * 10000);
@@ -549,7 +551,7 @@ const World = {
       if (Chat.forwardIds.indexOf(id) !== -1 && Chat.talkingId !== id) {
         World._startWander(id, renderer, base, W);
       } else {
-        renderer.switchAnim('idle', DIR.DOWN);
+        renderer.switchAnim('idle', DIR.FRONT);
       }
     });
   },
@@ -709,7 +711,7 @@ const World = {
     if (this._jumpActive || this._duckActive) return;
     var id = this._getControlledId();
     var renderer = id && this.renderers[id];
-    if (renderer) renderer.switchAnim('idle', DIR.DOWN);
+    if (renderer) renderer.switchAnim('idle', DIR.FRONT);
   },
 
   _doJump() {
@@ -720,7 +722,7 @@ const World = {
     if (!wrapper || !renderer) return;
 
     this._jumpActive = true;
-    renderer.switchAnim('action', DIR.DOWN);
+    renderer.switchAnim('action', DIR.FRONT);
 
     // CSS jump arc — translateY up then back down
     var startBottom = parseInt(wrapper.style.bottom) || FLOOR_H;
@@ -741,7 +743,7 @@ const World = {
         wrapper.style.bottom = startBottom + 'px';
         self._jumpActive = false;
         if (!self._keysHeld['ArrowLeft'] && !self._keysHeld['ArrowRight']) {
-          renderer.switchAnim('idle', DIR.DOWN);
+          renderer.switchAnim('idle', DIR.FRONT);
         }
       }
     }
@@ -757,7 +759,7 @@ const World = {
 
     this._duckActive = true;
     // Duck = face down direction and squish with CSS scaleY
-    renderer.switchAnim('idle', DIR.DOWN);
+    renderer.switchAnim('idle', DIR.FRONT);
     wrapper.style.transform = 'scaleY(0.55) translateY(45%)';
     wrapper.style.transformOrigin = 'bottom center';
   },
