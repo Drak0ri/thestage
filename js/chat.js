@@ -249,6 +249,56 @@ const Chat = {
     this._debouncedCloudSave();
   },
 
+  // ── Character .md file system ───────────────────────────────────────────
+  _charFileCache: {},   // { "id:filename": { content, ts } }
+  _CHAR_FILES: ['soul.md', 'st_mem.md', 'lt_mem.md', 'skills.md', 'goals.md', 'relationships.md'],
+  _CHAR_FILE_TTL: 5 * 60 * 1000,  // cache for 5 minutes
+
+  async _fetchCharFiles(member) {
+    var slug = member.name.toLowerCase() + '-' + member.id;
+    var results = {};
+    var now = Date.now();
+    for (var i = 0; i < this._CHAR_FILES.length; i++) {
+      var fname = this._CHAR_FILES[i];
+      var cacheKey = member.id + ':' + fname;
+      var cached = this._charFileCache[cacheKey];
+      if (cached && (now - cached.ts) < this._CHAR_FILE_TTL) {
+        results[fname] = cached.content;
+        continue;
+      }
+      try {
+        var url = 'https://raw.githubusercontent.com/Drak0ri/thestage/main/characters/' + slug + '/' + fname;
+        var resp = await fetch(url);
+        if (resp.ok) {
+          var text = await resp.text();
+          results[fname] = text;
+          this._charFileCache[cacheKey] = { content: text, ts: now };
+        }
+      } catch(e) { /* file missing or network issue — skip */ }
+    }
+    return results;
+  },
+
+  // Write a character file back to the repo via the Apps Script relay
+  async _writeCharFile(member, filename, content) {
+    var slug = member.name.toLowerCase() + '-' + member.id;
+    var path = 'characters/' + slug + '/' + filename;
+    try {
+      await fetch(RELAY_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({
+          action: 'writeFile',
+          pin: App.pin,
+          path: path,
+          content: content
+        })
+      });
+      // Invalidate cache
+      this._charFileCache[member.id + ':' + filename] = { content: content, ts: Date.now() };
+    } catch(e) { console.warn('Failed to write ' + filename + ' for ' + member.name, e); }
+  },
+
   async _getResponse(member, userText) {
     var thinking = document.createElement('div');
     thinking.className = 'msg ai thinking';
@@ -272,6 +322,16 @@ const Chat = {
     var messages = sessionMsgs;
 
     // ── System prompt ────────────────────────────────────────────────────────
+    // Fetch character .md files from repo
+    var charFiles = await this._fetchCharFiles(member);
+    var charCtx = '';
+    if (charFiles['soul.md']) charCtx += '\n\nSOUL (your core identity):\n' + charFiles['soul.md'];
+    if (charFiles['skills.md']) charCtx += '\n\nSKILLS & EXPERTISE:\n' + charFiles['skills.md'];
+    if (charFiles['goals.md']) charCtx += '\n\nCURRENT GOALS:\n' + charFiles['goals.md'];
+    if (charFiles['relationships.md']) charCtx += '\n\nRELATIONSHIPS:\n' + charFiles['relationships.md'];
+    if (charFiles['lt_mem.md']) charCtx += '\n\nLONG-TERM MEMORY:\n' + charFiles['lt_mem.md'];
+    if (charFiles['st_mem.md']) charCtx += '\n\nSHORT-TERM MEMORY (recent context):\n' + charFiles['st_mem.md'];
+
     var roomCtx = (typeof ROOMS !== 'undefined' && ROOMS[World.currentRoom])
       ? ROOMS[World.currentRoom].aiContext : '';
 
@@ -308,6 +368,7 @@ const Chat = {
     var system = [
       'You are ' + member.name + ', a team member. Role: ' + (member.role || 'team member') + '.',
       'Personality: ' + member.personality + '.',
+      charCtx,
       roomCtx,
       groupCtx,
       briefingCtx,
