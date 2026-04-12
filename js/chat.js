@@ -5,7 +5,8 @@ const Chat = {
   messagesEl:    null,
   inputEl:       null,
   forwardIds:    [],
-  talkingId:     null,
+  talkingId:     null,   // legacy compat — first of talkingIds
+  talkingIds:    [],     // multi-select active speakers
   handRaisedIds: [],
   sharedHistory: [],
   _restored: false,
@@ -26,6 +27,7 @@ const Chat = {
     if (!App || !App.state) return;
     App.state.stageIds        = this.forwardIds.slice();
     App.state.stageTalkingId  = this.talkingId;
+    App.state.stageTalkingIds = this.talkingIds.slice();
     this._debouncedCloudSave();
   },
 
@@ -62,6 +64,11 @@ const Chat = {
     } else {
       this.talkingId = validIds[0];
     }
+    // Restore multi-select
+    if (App.state.stageTalkingIds && App.state.stageTalkingIds.length) {
+      this.talkingIds = App.state.stageTalkingIds.filter(function(id) { return validIds.indexOf(id) !== -1; });
+    }
+    if (!this.talkingIds.length && this.talkingId) this.talkingIds = [this.talkingId];
     // Restore shared history for the saved participants
     var self = this;
     validIds.forEach(function(id) { self._mergeHistory(id); });
@@ -74,6 +81,12 @@ const Chat = {
     // Merge history for whoever is being brought forward
     var self = this;
     this.forwardIds.forEach(function(id) { self._mergeHistory(id); });
+    // Ensure talkingIds is always in sync
+    if (!this.talkingIds.length && this.talkingId) this.talkingIds = [this.talkingId];
+    if (!this.talkingIds.length && this.forwardIds.length) {
+      this.talkingIds = [this.forwardIds[0]];
+      this.talkingId  = this.forwardIds[0];
+    }
     this.panel.classList.add('open');
     this.renderPanel();
     this.inputEl.focus();
@@ -102,8 +115,9 @@ const Chat = {
 
       var pill = document.createElement('div');
       pill.style.cssText = 'display:flex;align-items:center;gap:6px;padding:4px 10px 4px 4px;border-radius:20px;cursor:pointer;border:1.5px solid;transition:all 0.15s;';
-      pill.style.borderColor = id === self.talkingId ? '#ffcc44' : '#2d2b55';
-      pill.style.background  = id === self.talkingId ? 'rgba(255,204,68,0.12)' : 'rgba(45,43,85,0.5)';
+      var isActive = self.talkingIds.indexOf(id) !== -1;
+      pill.style.borderColor = isActive ? '#ffcc44' : '#2d2b55';
+      pill.style.background  = isActive ? 'rgba(255,204,68,0.12)' : 'rgba(45,43,85,0.5)';
 
       var av = document.createElement('canvas');
       av.width = 24; av.height = 36;
@@ -115,12 +129,13 @@ const Chat = {
       pill.appendChild(av);
 
       var nameSpan = document.createElement('span');
+      var isActiveSpan = self.talkingIds.indexOf(id) !== -1;
       nameSpan.style.cssText = 'font-family:"Press Start 2P",monospace;font-size:7px;color:' +
-        (id === self.talkingId ? '#ffcc44' : '#88aaff') + ';';
+        (isActiveSpan ? '#ffcc44' : '#88aaff') + ';';
       nameSpan.textContent = member.name.split(' ')[0].substring(0,10);
       pill.appendChild(nameSpan);
 
-      pill.addEventListener('click', function() { Chat.activateTalking(id); });
+      pill.addEventListener('click', (function(pid) { return function() { Chat.toggleTalking(pid); }; })(id));
       avatarRow.appendChild(pill);
     });
 
@@ -136,8 +151,28 @@ const Chat = {
     this.renderMessages();
   },
 
+  // Toggle a pill in/out of the active speakers set
+  toggleTalking(id) {
+    if (this.forwardIds.indexOf(id) === -1) return;
+    var idx = this.talkingIds.indexOf(id);
+    if (idx !== -1) {
+      // Deselect — but keep at least one active
+      if (this.talkingIds.length > 1) {
+        this.talkingIds.splice(idx, 1);
+      }
+    } else {
+      this.talkingIds.push(id);
+    }
+    this.talkingId = this.talkingIds[0] || null;
+    this.handRaisedIds = this.handRaisedIds.filter(function(x) { return x !== id; });
+    this._saveStage();
+    this.renderPanel();
+    World.refresh();
+  },
+
   activateTalking(id) {
     if (this.forwardIds.indexOf(id) === -1) return;
+    this.talkingIds = [id];
     this.talkingId = id;
     this.renderPanel();
     World.refresh();
@@ -192,11 +227,8 @@ const Chat = {
 
   async send() {
     var text = this.inputEl.value.trim();
-    if (!text || !this.talkingId) return;
+    if (!text || !this.talkingIds.length) return;
     this.inputEl.value = '';
-
-    var member = App.state.team.find(function(m) { return m.id === Chat.talkingId; });
-    if (!member) return;
 
     this.sharedHistory.push({ role: 'user', content: text, speakerId: null });
 
@@ -206,8 +238,14 @@ const Chat = {
     this.messagesEl.appendChild(userDiv);
     this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
 
-    await this._getResponse(member, text);
-    this._maybeRaiseHands(member.id);
+    // Get a response from each active speaker in turn
+    var activeIds = this.talkingIds.slice();
+    for (var i = 0; i < activeIds.length; i++) {
+      var member = App.state.team.find(function(m) { return m.id === activeIds[i]; });
+      if (!member) continue;
+      await this._getResponse(member, text);
+      this._maybeRaiseHands(member.id);
+    }
     this._debouncedCloudSave();
   },
 
@@ -422,6 +460,7 @@ const Chat = {
     // Fully clear stage — used when explicitly ending all conversations
     this.forwardIds    = [];
     this.talkingId     = null;
+    this.talkingIds    = [];
     this.handRaisedIds = [];
     this.sharedHistory = [];
     this._restored     = false;
