@@ -3,6 +3,8 @@
 const IDLE_PX      = 1.8;   // CSS display scale idle
 const ACTIVE_PX    = 2.2;   // CSS display scale talking
 const FLOOR_H      = 58;
+const CLAUDE_COLOR_IDX = 0;     // colorIdx 0 = Claude, rendered larger
+const CLAUDE_SCALE_BONUS = 0.4; // Claude is this much bigger than others
 
 // ── Spritesheet layout ──────────────────────────────────────────────────────
 // Each sprite PNG: 576 × 384 px  (9 cols × 6 rows of 64×64 frames) — pinned @eaa9beaf
@@ -14,7 +16,7 @@ const FLOOR_H      = 58;
 // Row 4 : hurt      6 frames  (hurt front)
 // Row 5 : thrust    8 frames  (thrust-right pointing)
 const SPRITE_FRAME = 64;
-const SPRITE_CDN   = 'https://cdn.jsdelivr.net/gh/Drak0ri/thestage-sprites@a162ab4ca4e4edaed1728b6401b54f121b6de0ca/char_';
+const SPRITE_CDN   = 'https://cdn.jsdelivr.net/gh/Drak0ri/thestage-sprites@a8bc5c504e79f1a4ee436f8a2815673a2caa5c81/char_';
 
 // Spritesheet row layout (corrected — all rows use layers with full clothing):
 // Row 0: idle      2 frames  (walk-right frames 0,4 — standing poses)
@@ -362,7 +364,8 @@ const World = {
       var isHandRaised = Chat.handRaisedIds.indexOf(member.id) !== -1;
       var colorIdx     = member.colorIdx % 12;
 
-      var displayScale = isTalking ? ACTIVE_PX : IDLE_PX;
+      var claudeBonus  = (colorIdx === CLAUDE_COLOR_IDX) ? CLAUDE_SCALE_BONUS : 0;
+      var displayScale = (isTalking ? ACTIVE_PX : IDLE_PX) + claudeBonus;
       var displayW     = Math.round(SPRITE_FRAME * displayScale);
       var displayH     = Math.round(SPRITE_FRAME * displayScale);
 
@@ -642,7 +645,8 @@ const World = {
       wrapper.style.zIndex = isTalking ? '20' : '10';
       wrapper.classList.toggle('selected', isTalking);
 
-      var displayScale = isTalking ? ACTIVE_PX : IDLE_PX;
+      var claudeBonus  = (member.colorIdx % 12 === CLAUDE_COLOR_IDX) ? CLAUDE_SCALE_BONUS : 0;
+      var displayScale = (isTalking ? ACTIVE_PX : IDLE_PX) + claudeBonus;
       var displayW = Math.round(SPRITE_FRAME * displayScale);
       var displayH = Math.round(SPRITE_FRAME * displayScale);
       var canvas = document.getElementById('canvas-' + id);
