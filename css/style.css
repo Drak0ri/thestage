@@ -225,11 +225,11 @@ body {
   animation: fadeUp 0.2s ease;
 }
 .msg.user {
-  align-self: flex-end;
+  align-self: flex-start;
   background: var(--bg3);
   color: var(--accent-bright);
   border: 1px solid var(--accent);
-  border-radius: var(--radius) 0 var(--radius) var(--radius);
+  border-radius: 0 var(--radius) var(--radius) var(--radius);
 }
 .msg.ai {
   align-self: flex-start;
