@@ -23,9 +23,8 @@ const SPRITE_CDN   = 'https://cdn.jsdelivr.net/gh/Drak0ri/thestage-sprites@a8bc5
 // Rows  0-3:  idle   (2 frames — standing walk pose)
 // Rows  4-7:  walk   (9 frames)
 // Rows  8-11: action (7 frames — spellcast gesture)
-const DIR = { BACK: 0, FRONT: 1, RIGHT: 2, BACKRIGHT: 3 };
-// Aliases so walk direction code still works
-DIR.LEFT  = DIR.FRONT;   // walking left shows front-left face (row 1)
+const DIR = { BACK: 0, LEFT: 1, RIGHT: 2, FRONT: 3 };
+// Row within each anim group: BACK=0(away), LEFT=1(profile left), RIGHT=2(profile right), FRONT=3(toward camera)
 const ANIM_BASE   = { idle: 0, walk: 4, action: 8 };
 const ANIM_ROWS = {
   idle:   { row: 0, frames: 2, fps: 3  },
