@@ -72,36 +72,49 @@ function SpriteRenderer(colorIdx, canvas) {
   this.colorIdx  = colorIdx;
   this.canvas    = canvas;
   this.ctx       = canvas.getContext('2d');
-  this.anim      = 'idle';
+  // Locked anim state — only changed atomically via _setAnimState
+  this._animName = 'idle';
+  this._animRow  = ANIM_ROWS['idle'].row;
+  this._animFrames = ANIM_ROWS['idle'].frames;
+  this._animFps  = ANIM_ROWS['idle'].fps;
   this.frame     = 0;
   this.flipX     = false;
   this._timer    = null;
-  this._playing  = false;
   this._oneshot  = false;
   this._onDone   = null;
+  // Hook onload once — redraws when sprite arrives from CDN
+  var self = this;
+  _getSprite(colorIdx, function() { self._draw(); });
 }
 
+// Atomically update all anim state so _draw and loop always agree
+SpriteRenderer.prototype._setAnimState = function(name, flipX, oneshot, onDone) {
+  var info = ANIM_ROWS[name] || ANIM_ROWS['idle'];
+  this._animName   = name;
+  this._animRow    = info.row;
+  this._animFrames = info.frames;
+  this._animFps    = info.fps;
+  this.frame       = 0;
+  this.flipX       = !!flipX;
+  this._oneshot    = !!oneshot;
+  this._onDone     = onDone || null;
+};
+
 SpriteRenderer.prototype.setAnim = function(name, flipX, oneshot, onDone) {
-  if (!ANIM_ROWS[name]) name = 'idle';
-  this.anim     = name;
-  this.frame    = 0;
-  this.flipX    = !!flipX;
-  this._oneshot = !!oneshot;
-  this._onDone  = onDone || null;
+  this._setAnimState(name, flipX, oneshot, onDone);
   this._draw();
 };
 
 SpriteRenderer.prototype._draw = function() {
-  var info   = ANIM_ROWS[this.anim];
-  var self   = this;
-  var img    = _getSprite(this.colorIdx, function() { self._draw(); });
-  var ctx    = this.ctx;
-  var W      = this.canvas.width;
-  var H      = this.canvas.height;
+  var img = _getSprite(this.colorIdx);
+  var ctx = this.ctx;
+  var W   = this.canvas.width;
+  var H   = this.canvas.height;
   ctx.clearRect(0, 0, W, H);
-  if (!img.complete || !img.naturalWidth) return; // not loaded yet — onload will retry
+  if (!img.complete || !img.naturalWidth) return;
+  // Use locked row/frame — never reads this.anim mid-draw
   var sx = this.frame * SPRITE_FRAME;
-  var sy = info.row   * SPRITE_FRAME;
+  var sy = this._animRow * SPRITE_FRAME;
   if (this.flipX) {
     ctx.save();
     ctx.translate(W, 0);
@@ -113,18 +126,19 @@ SpriteRenderer.prototype._draw = function() {
 
 SpriteRenderer.prototype.startLoop = function() {
   this._stopLoop();
-  this._playing = true;
   var self = this;
-  var info = ANIM_ROWS[this.anim];
-  var interval = Math.round(1000 / info.fps);
+  // Capture fps at loop-start time; restart loop if anim changes
+  var loopFps = this._animFps;
+  var interval = Math.round(1000 / loopFps);
   this._timer = setInterval(function() {
-    var curInfo = ANIM_ROWS[self.anim];
-    self.frame = (self.frame + 1) % curInfo.frames;
+    // Advance frame within locked frame count
+    self.frame = (self.frame + 1) % self._animFrames;
     if (self._oneshot && self.frame === 0) {
       self._stopLoop();
-      self._playing = false;
-      self.setAnim('idle', false);
-      if (self._onDone) { self._onDone(); self._onDone = null; }
+      var cb = self._onDone;
+      self._setAnimState('idle', false, false, null);
+      self._draw();
+      if (cb) cb();
       return;
     }
     self._draw();
@@ -141,7 +155,16 @@ SpriteRenderer.prototype.destroy = function() {
 
 SpriteRenderer.prototype.playOnce = function(animName, onDone) {
   this._stopLoop();
-  this.setAnim(animName, this.flipX, true, onDone);
+  this._setAnimState(animName, this.flipX, true, onDone);
+  this._draw();
+  this.startLoop();
+};
+
+// Switch to a new looping animation (stops old loop, starts new at correct fps)
+SpriteRenderer.prototype.switchAnim = function(animName, flipX) {
+  this._stopLoop();
+  this._setAnimState(animName, !!flipX, false, null);
+  this._draw();
   this.startLoop();
 };
 
@@ -363,13 +386,8 @@ const World = {
       var renderer = new SpriteRenderer(colorIdx, c);
       World.renderers[member.id] = renderer;
 
-      // Draw initial frame — idle or sit for talker
-      if (isTalking) {
-        renderer.setAnim('idle', false);
-      } else {
-        renderer.setAnim('idle', false);
-      }
-      renderer.startLoop();
+      // Initial animation
+      renderer.switchAnim('idle', false);
 
       // Wrapper
       var wrapper = document.createElement('div');
@@ -435,12 +453,10 @@ const World = {
           // Occasionally sit
           var r = Math.random();
           if (r < 0.3) {
-            renderer.setAnim('sit', false);
-            renderer.startLoop();
+            renderer.switchAnim('sit', false);
             setTimeout(function() {
               if (document.getElementById('char-' + id) && !state.moving) {
-                renderer.setAnim('idle', false);
-                renderer.startLoop();
+                renderer.switchAnim('idle', false);
               }
             }, 2000 + Math.random() * 3000);
           }
@@ -460,13 +476,11 @@ const World = {
       state.dir     = state.targetX > state.x ? 1 : -1;
       state.moving  = true;
       // Switch to walk, flip based on direction
-      renderer.setAnim('walk', state.dir < 0);
-      renderer.startLoop();
+      renderer.switchAnim('walk', state.dir < 0);
     };
 
     // Start idle loop
-    renderer.setAnim('idle', false);
-    renderer.startLoop();
+    renderer.switchAnim('idle', false);
 
     var moveTimer = setInterval(function() {
       var wrapper = document.getElementById('char-' + id);
@@ -484,8 +498,7 @@ const World = {
           state.moving = false;
           wrapper.style.left = Math.round(state.x) + 'px';
           // Arrive — switch to idle
-          renderer.setAnim('idle', false);
-          renderer.startLoop();
+          renderer.switchAnim('idle', false);
           var stillTimer = setTimeout(function() {
             if (document.getElementById('char-' + id)) pickTarget();
           }, 2000 + Math.random() * 4000);
@@ -527,8 +540,7 @@ const World = {
       if (Chat.forwardIds.indexOf(id) !== -1 && Chat.talkingId !== id) {
         World._startWander(id, renderer, base, W);
       } else {
-        renderer.setAnim('idle', false);
-        renderer.startLoop();
+        renderer.switchAnim('idle', false);
       }
     });
   },
