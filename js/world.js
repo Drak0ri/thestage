@@ -5,7 +5,7 @@ const ACTIVE_PX    = 2.2;   // CSS display scale talking
 const FLOOR_H      = 58;
 
 // ── Spritesheet layout ──────────────────────────────────────────────────────
-// Each sprite PNG: 576 × 384 px  (9 cols × 6 rows of 64×64 frames)
+// Each sprite PNG: 576 × 384 px  (9 cols × 6 rows of 64×64 frames) — pinned @eaa9beaf
 // All animations use LPC rows ≤20 so clothing layers always cover them
 // Row 0 : idle      2 frames  (walk-right standing poses)
 // Row 1 : walk      9 frames  (walk-right full cycle)
@@ -14,7 +14,7 @@ const FLOOR_H      = 58;
 // Row 4 : hurt      6 frames  (hurt front)
 // Row 5 : thrust    8 frames  (thrust-right pointing)
 const SPRITE_FRAME = 64;
-const SPRITE_CDN   = 'https://cdn.jsdelivr.net/gh/Drak0ri/thestage-sprites@main/char_';
+const SPRITE_CDN   = 'https://cdn.jsdelivr.net/gh/Drak0ri/thestage-sprites@eaa9beaf636879136d8130c11f812ad77ee49f98/char_';
 
 // Spritesheet row layout (corrected — all rows use layers with full clothing):
 // Row 0: idle      2 frames  (walk-right frames 0,4 — standing poses)
