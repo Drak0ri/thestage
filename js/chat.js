@@ -383,6 +383,10 @@ const Chat = {
       ? 'PROJECT CONTEXT: ' + App.state.briefing : '';
 
     var artifactCtx = (typeof WorldObjects !== 'undefined') ? WorldObjects.getContextString(World.currentRoom) : '';
+    // If there are artifacts, make it clear characters should engage with them
+    if (artifactCtx) {
+      artifactCtx += '\n\nYou are AWARE of everything above. You can: talk about it, critique it, build on it, refer to it by name, ask questions about it, suggest improvements, or update it using [UPDATE_ARTIFACT:id|note|new content] or rebuild a widget using [WIDGET:title]...html...[/WIDGET].';
+    }
     var artifactCreateCtx = 'You can create persistent artifacts using [ARTIFACT:type|title|content] — types: note, doc, plan, code, idea, list, decision. ' +
       'IMPORTANT — for anything interactive or visual, use the WIDGET format: [WIDGET:title]...complete HTML...[/WIDGET] ' +
       'A widget is a full self-contained HTML page with inline CSS+JS. No external dependencies. Dark background (#0a0820 or similar). ' +
@@ -987,6 +991,7 @@ const Chat = {
       .replace(/\n/g, '<br>');
   }
 };
+
 
 
 
