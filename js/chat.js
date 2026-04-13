@@ -52,7 +52,7 @@ const Chat = {
       this.panel.classList.add('state-' + state);
       if (this._stateLabel) this._stateLabel.textContent = labels[state] || '';
     }
-    this.inputEl.disabled = (state === 'thinking' || state === 'flowing');
+    this.inputEl.disabled = (state === 'thinking' || state === 'flowing') && !this._autoLifeActive;
   },
 
   // ── Stage persistence ────────────────────────────────────────────────────────
@@ -299,6 +299,15 @@ const Chat = {
     if (!text || !this.talkingIds.length) return;
     this.inputEl.value = '';
     this._agentRounds = 0;
+    // Pause auto-life during user interaction — resume after response cycle
+    var wasAutoLife = this._autoLifeActive && !this._autoLifePaused;
+    if (wasAutoLife) {
+      var self = this;
+      Object.keys(this._autoLifeTimers).forEach(function(id) {
+        clearTimeout(self._autoLifeTimers[id]);
+      });
+      this._autoLifeTimers = {};
+    }
     this._setState('thinking');
 
     // Add user message to shared transcript
@@ -326,6 +335,8 @@ const Chat = {
     // Run agent-to-agent conversation from hand-raises
     await this._runAgentRound(lastResponderId);
     this._debouncedCloudSave();
+    // Resume auto-life if it was active
+    if (wasAutoLife && this._autoLifeActive) this._autoLifeScheduleAll();
   },
 
   // ── Core response function ────────────────────────────────────────────────────
@@ -1457,6 +1468,9 @@ const Chat = {
       div.appendChild(bodyEl);
       this.messagesEl.appendChild(div);
       this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
+      // Always keep input enabled during auto-life
+      this.inputEl.disabled = false;
+      this._setState('your-turn');
 
       this._debouncedCloudSave();
 
