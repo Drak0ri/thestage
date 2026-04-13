@@ -63,6 +63,13 @@ function drawPixelChar(ctx, pal, frame, opts) {
   ctx.fillStyle = pal.eyes;
   ctx.fillRect(W*0.36, H*0.20, W*0.06, H*0.05);
   ctx.fillRect(W*0.60, H*0.20, W*0.06, H*0.05);
+  // Smile
+  ctx.fillStyle = pal.mouth;
+  ctx.beginPath();
+  ctx.arc(W*0.5, H*0.28, W*0.12, 0.1, Math.PI - 0.1);
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = pal.mouth;
+  ctx.stroke();
   // Legs
   ctx.fillStyle = pal.pants;
   ctx.fillRect(W*0.22, H*0.72, W*0.22, H*0.22);
