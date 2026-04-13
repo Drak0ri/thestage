@@ -113,8 +113,8 @@ body {
   z-index: 15;
   pointer-events: none;
 }
-#chars-layer .character {
-  pointer-events: all;
+#chars-layer > div {
+  pointer-events: auto;
 }
 #world-hud {
   position: absolute;
@@ -664,7 +664,8 @@ body {
 #objects-layer {
   position: absolute;
   inset: 0;
-  z-index: 20;
+  z-index: 6;
+  pointer-events: none;
 }
 
 /* ── ARTIFACT MODAL ───────────────────────────────── */
@@ -693,6 +694,7 @@ body {
   min-height: 80px;
   max-height: 55vh;
 }
+
 
 
 
