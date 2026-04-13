@@ -337,12 +337,26 @@ const WorldObjects = {
     if (!roomArts.length) return '';
     var lines = roomArts.map(function(a) {
       var type = ARTIFACT_TYPES[a.type] || ARTIFACT_TYPES.note;
-      var preview = a.type === 'widget'
-        ? '[live HTML widget — ' + a.content.length + ' chars of code]'
-        : a.content.substring(0, 120) + (a.content.length > 120 ? '…' : '');
-      return type.icon + ' [id:' + a.id + '] ' + a.type.toUpperCase() + ' "' + a.title +
-        '" (by ' + (a.authorName || '?') + '): ' + preview;
+      var who = 'by ' + (a.authorName || '?');
+      var when = new Date(a.createdAt).toLocaleDateString();
+      var updates = a.updates && a.updates.length
+        ? ' [updated ' + a.updates.length + ' time(s), last by ' + a.updates[a.updates.length-1].authorName + ': ' + a.updates[a.updates.length-1].note + ']'
+        : '';
+      // For widgets: extract meaningful description from HTML (title tag or first heading)
+      var content;
+      if (a.type === 'widget') {
+        var titleMatch = a.content.match(/<title>([^<]+)<\/title>/i);
+        var h1Match = a.content.match(/<h[123][^>]*>([^<]+)<\/h[123]>/i);
+        var desc = (titleMatch && titleMatch[1]) || (h1Match && h1Match[1]) || '';
+        content = 'LIVE WIDGET — a working interactive ' + a.title + (desc && desc !== a.title ? ' (' + desc + ')' : '') +
+          '. You built this and it runs in the world. You can update it with [UPDATE_ARTIFACT:' + a.id + '|what changed|new HTML].';
+      } else {
+        // Full content for text artifacts — they should read it completely
+        content = a.content;
+      }
+      return type.icon + ' [id:' + a.id + '] ' + a.type.toUpperCase() + ': "' + a.title + '" — ' + who + ', ' + when + updates + '\nCONTENT: ' + content;
     });
-    return 'ARTIFACTS IN THIS ROOM:\n' + lines.join('\n');
+    return 'THINGS THE TEAM HAS CREATED (you can see, reference, discuss and update all of these):\n\n' + lines.join('\n\n');
   },
 };
+
