@@ -24,7 +24,7 @@ const ROOMS = {
     sky:   ['#050a10','#0a1520','#102030'],
     aiContext: 'You are in the Playground — a creative free space. Be loose, playful, imaginative and enthusiastic. Riff on ideas, make unexpected connections, be encouraging and a little chaotic. Creativity over correctness.',
     statusLabel: 'Playground'
-  }
+  },
   classroom: {
     id:    'classroom',
     label: '🎓 CLASS',
@@ -41,4 +41,5 @@ const ROOMS = {
     statusLabel: 'Classroom'
   }
 };
+
 
