@@ -4,13 +4,13 @@
 // Click to read full content. Persists in App.state.artifacts[].
 
 const ARTIFACT_TYPES = {
-  note:     { icon: '📝', color: '#fffacc', border: '#ccaa00', label: 'NOTE',     z: 30 },
-  doc:      { icon: '📄', color: '#ddeeff', border: '#4488cc', label: 'DOC',      z: 30 },
-  plan:     { icon: '🗓', color: '#ccffdd', border: '#22aa66', label: 'PLAN',     z: 30 },
-  code:     { icon: '💾', color: '#eebbff', border: '#7744cc', label: 'CODE',     z: 30 },
-  idea:     { icon: '💡', color: '#ffeeaa', border: '#cc8800', label: 'IDEA',     z: 30 },
-  list:     { icon: '📋', color: '#ffddee', border: '#cc4488', label: 'LIST',     z: 30 },
-  decision: { icon: '⚖️', color: '#cceeff', border: '#2266aa', label: 'DECISION', z: 30 },
+  note:     { icon: '📝', color: '#fffacc', border: '#ccaa00', label: 'NOTE'     },
+  doc:      { icon: '📄', color: '#ddeeff', border: '#4488cc', label: 'DOC'      },
+  plan:     { icon: '🗓', color: '#ccffdd', border: '#22aa66', label: 'PLAN'     },
+  code:     { icon: '💾', color: '#eebbff', border: '#7744cc', label: 'CODE'     },
+  idea:     { icon: '💡', color: '#ffeeaa', border: '#cc8800', label: 'IDEA'     },
+  list:     { icon: '📋', color: '#ffddee', border: '#cc4488', label: 'LIST'     },
+  decision: { icon: '⚖️', color: '#cceeff', border: '#2266aa', label: 'DECISION' },
 };
 
 const WorldObjects = {
@@ -78,7 +78,6 @@ const WorldObjects = {
         'border:2px solid ' + type.border,
         'border-radius:2px',
         'cursor:pointer',
-        'z-index:' + type.z,
         'display:flex',
         'flex-direction:column',
         'align-items:center',
@@ -121,12 +120,10 @@ const WorldObjects = {
       card.addEventListener('mouseenter', function() {
         card.style.transform = 'scale(1.1) translateY(-4px)';
         card.style.boxShadow = '3px 6px 0 rgba(0,0,0,0.5)';
-        card.style.zIndex = '25';
       });
       card.addEventListener('mouseleave', function() {
         card.style.transform = '';
         card.style.boxShadow = '2px 3px 0 rgba(0,0,0,0.5)';
-        card.style.zIndex = type.z;
       });
       card.addEventListener('click', function(e) {
         e.stopPropagation();
@@ -288,6 +285,7 @@ const WorldObjects = {
       lines.join('\n');
   },
 };
+
 
 
 
