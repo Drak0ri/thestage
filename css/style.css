@@ -663,38 +663,21 @@ body {
   pointer-events: none;
   z-index: 5;
 }
-#objects-layer .artifact-card {
-  pointer-events: all;
-}
 
 /* ── ARTIFACT MODAL ───────────────────────────────── */
 .artifact-modal-box {
-  max-width: 600px;
+  max-width: 620px;
   width: 92%;
-  max-height: 80vh;
+  max-height: 82vh;
   display: flex;
   flex-direction: column;
+  gap: 0;
 }
 #artifact-modal-header {
   display: flex;
-  align-items: baseline;
-  gap: 8px;
-  margin-bottom: 10px;
-  flex-wrap: wrap;
-}
-#artifact-modal-icon {
-  font-size: 18px;
-}
-#artifact-modal-title {
-  font-family: 'Press Start 2P', monospace;
-  font-size: 9px;
-  color: var(--gold);
-  flex: 1;
-}
-#artifact-modal-meta {
-  font-family: 'Press Start 2P', monospace;
-  font-size: 5px;
-  color: var(--text-muted);
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
 }
 #artifact-modal-body {
   flex: 1;
@@ -702,8 +685,8 @@ body {
   background: var(--bg1);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 12px;
+  padding: 14px;
   margin-bottom: 12px;
   min-height: 80px;
-  max-height: 50vh;
+  max-height: 55vh;
 }
