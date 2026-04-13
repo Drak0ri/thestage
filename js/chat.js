@@ -382,6 +382,9 @@ const Chat = {
     var briefingCtx = (App.state.briefing && App.state.briefing.trim())
       ? 'PROJECT CONTEXT: ' + App.state.briefing : '';
 
+    var artifactCtx = (typeof WorldObjects !== 'undefined') ? WorldObjects.getContextString(World.currentRoom) : '';
+    var artifactCreateCtx = 'You can create a persistent artifact visible to everyone in the room by including [ARTIFACT:type|title|content] — types: note, doc, plan, code, idea, list, decision. Use this when you produce something worth keeping — a plan, a decision, code, a list. You can update an existing artifact with [UPDATE_ARTIFACT:id|update note|new full content]. Do not create artifacts for casual replies — only for substantive outputs worth preserving.';
+
     var system = [
       'You are ' + member.name + ', a team member. Role: ' + (member.role || 'team member') + '.',
       'Personality: ' + member.personality + '.',
@@ -390,9 +393,11 @@ const Chat = {
       groupCtx,
       briefingCtx,
       memoryCtx,
+      artifactCtx,
       summonCtx,
+      artifactCreateCtx,
       actionCtx,
-      'Keep responses SHORT (2-3 sentences). Stay in character. Never break character. Do not prefix your reply with your own name.',
+      'Keep responses SHORT (2-3 sentences unless creating an artifact). Stay in character. Never break character. Do not prefix your reply with your own name.',
     ].filter(Boolean).join(' ');
 
     try {
@@ -493,6 +498,40 @@ const Chat = {
           World.render();
           this.appendSystem('✦ ' + createName + (createRole ? ' — ' + createRole : '') + ' has joined the team.');
         }
+      }
+
+      // ── Parse ARTIFACT and UPDATE_ARTIFACT tags ────────────────────────
+      if (typeof WorldObjects !== 'undefined') {
+        // Extract [ARTIFACT:type|title|content]
+        var artTagRe = /\[ARTIFACT:(\w+)\|([^|]+)\|([^\]]+)\]/g;
+        var artTagMatch;
+        while ((artTagMatch = artTagRe.exec(rawReply)) !== null) {
+          var aType = artTagMatch[1], aTitle = artTagMatch[2].trim(), aContent = artTagMatch[3].trim();
+          var artifact = WorldObjects.create(aType, aTitle, aContent, member.id, member.name, World.currentRoom);
+          var typeInfo = ARTIFACT_TYPES[artifact.type] || ARTIFACT_TYPES.note;
+          var sysMsg = { role: 'system', content: typeInfo.icon + ' ' + member.name + ' created a ' + artifact.type + ': "' + artifact.title + '"', speakerId: null };
+          Chat.sharedHistory.push(sysMsg);
+          Chat._appendToAllForward(sysMsg);
+          Chat.appendSystem(typeInfo.icon + ' ' + member.name + ' created: ' + artifact.title + ' — click the card in the world to read it');
+        }
+        // Extract [UPDATE_ARTIFACT:id|note|new content]
+        var updTagRe = /\[UPDATE_ARTIFACT:([^\|]+)\|([^|]*)\|([^\]]+)\]/g;
+        var updTagMatch;
+        while ((updTagMatch = updTagRe.exec(rawReply)) !== null) {
+          var uId = updTagMatch[1].trim(), uNote = updTagMatch[2].trim(), uContent = updTagMatch[3].trim();
+          var updated = WorldObjects.update(uId, uContent, uNote, member.name);
+          if (updated) {
+            var uSysMsg = { role: 'system', content: '✏️ ' + member.name + ' updated "' + updated.title + '": ' + uNote, speakerId: null };
+            Chat.sharedHistory.push(uSysMsg);
+            Chat._appendToAllForward(uSysMsg);
+            Chat.appendSystem('✏️ ' + member.name + ' updated: ' + updated.title);
+          }
+        }
+        // Strip artifact tags from visible reply
+        reply = reply
+          .replace(/\[ARTIFACT:\w+\|[^|]+\|[^\]]+\]\s*/g, '')
+          .replace(/\[UPDATE_ARTIFACT:[^\]]+\]\s*/g, '')
+          .trim();
       }
 
       // Add reply to shared transcript
@@ -930,3 +969,4 @@ const Chat = {
       .replace(/\n/g, '<br>');
   }
 };
+
