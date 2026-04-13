@@ -104,17 +104,24 @@
     </button>
     <div style="margin-top:24px;border-top:1px solid #333;padding-top:18px;display:flex;flex-direction:column;align-items:center;gap:8px;">
       <div style="font-family:'Press Start 2P',monospace;font-size:6px;color:#556;margin-bottom:4px;">— or —</div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <label style="font-family:'Press Start 2P',monospace;font-size:6px;color:#88aaff;">MODEL:</label>
-        <input id="local-model" type="text" value="qwen3:1.7b"
-          style="font-family:'Press Start 2P',monospace;font-size:8px;background:#1a1a2e;color:#fff;border:2px solid #44aa66;border-radius:4px;padding:6px 10px;width:140px;outline:none;text-align:center;">
+      <div id="ollama-detect-area" style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+        <button onclick="App.detectOllamaModels()"
+          style="font-family:'Press Start 2P',monospace;font-size:8px;background:#227744;color:#fff;border:2px solid #44cc66;border-radius:4px;padding:10px 20px;cursor:pointer;">
+          &#128187; RUN LOCAL (OLLAMA)
+        </button>
+        <div style="font-family:'Press Start 2P',monospace;font-size:5px;color:#556;max-width:260px;text-align:center;line-height:1.8;">
+          requires ollama running on localhost:11434
+        </div>
       </div>
-      <button onclick="App.startLocal()"
-        style="font-family:'Press Start 2P',monospace;font-size:8px;background:#227744;color:#fff;border:2px solid #44cc66;border-radius:4px;padding:10px 20px;cursor:pointer;">
-        &#128187; RUN LOCAL (OLLAMA)
-      </button>
-      <div style="font-family:'Press Start 2P',monospace;font-size:5px;color:#556;max-width:260px;text-align:center;line-height:1.8;">
-        requires ollama running on localhost:11434
+      <div id="ollama-picker" style="display:none;flex-direction:column;align-items:center;gap:10px;">
+        <div style="font-family:'Press Start 2P',monospace;font-size:6px;color:#44cc66;">&#10003; OLLAMA CONNECTED</div>
+        <select id="local-model-select"
+          style="font-family:'Press Start 2P',monospace;font-size:7px;background:#1a1a2e;color:#fff;border:2px solid #44aa66;border-radius:4px;padding:8px 10px;width:220px;outline:none;text-align:center;cursor:pointer;">
+        </select>
+        <button onclick="App.startLocalWithSelection()"
+          style="font-family:'Press Start 2P',monospace;font-size:8px;background:#227744;color:#fff;border:2px solid #44cc66;border-radius:4px;padding:10px 20px;cursor:pointer;">
+          &#9654; START
+        </button>
       </div>
     </div>
   </div>
