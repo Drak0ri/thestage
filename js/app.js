@@ -36,6 +36,28 @@ const App = {
       : '☁️ Switched to CLOUD mode (Claude)');
   },
 
+  toggleModelPrompt() {
+    // Clicking the indicator cycles: auto (smart) → always Haiku → always Sonnet → auto
+    var modes = ['auto', 'haiku', 'sonnet'];
+    var current = this._modelMode || 'auto';
+    var next = modes[(modes.indexOf(current) + 1) % modes.length];
+    this._modelMode = next;
+    var indicator = document.getElementById('model-indicator');
+    if (next === 'auto') {
+      this.modelPromptEnabled = true;
+      if (indicator) { indicator.textContent = '\u25c6 Auto'; indicator.style.color = '#88aaff'; indicator.title = 'Smart: Haiku for chat, Sonnet for complex tasks'; }
+      this.setStatus('Model: AUTO — Haiku for chat, Sonnet for complex tasks');
+    } else if (next === 'haiku') {
+      this.modelPromptEnabled = false;
+      if (indicator) { indicator.textContent = '\u25c6 Haiku'; indicator.style.color = '#aaddff'; indicator.title = 'Always use Haiku (cheaper)'; }
+      this.setStatus('Model: always Haiku');
+    } else {
+      this.modelPromptEnabled = false;
+      if (indicator) { indicator.textContent = '\u2736 Sonnet'; indicator.style.color = '#ffcc44'; indicator.title = 'Always use Sonnet (more capable)'; }
+      this.setStatus('Model: always Sonnet');
+    }
+  },
+
   _updateAiModeBtn() {
     var btn = document.getElementById('btn-ai-mode');
     if (!btn) return;
@@ -252,5 +274,6 @@ document.addEventListener('DOMContentLoaded', () => {
   if (saved) { App.pin = saved; App.init(); }
   else { document.getElementById('pin-overlay').style.display = 'flex'; }
 });
+
 
 
