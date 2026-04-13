@@ -384,6 +384,7 @@ const Chat = {
 
     var artifactCtx = (typeof WorldObjects !== 'undefined') ? WorldObjects.getContextString(World.currentRoom) : '';
     // If there are artifacts, make it clear characters should engage with them
+    var propCtx = (typeof Props !== 'undefined') ? Props.getContextString(World.currentRoom) : '';
     if (artifactCtx) {
       artifactCtx += '\n\nYou are AWARE of everything above. You can: talk about it, critique it, build on it, refer to it by name, ask questions about it, suggest improvements, or update it using [UPDATE_ARTIFACT:id|note|new content] or rebuild a widget using [WIDGET:title]...html...[/WIDGET].';
     }
@@ -393,7 +394,8 @@ const Chat = {
       'If someone wants a clock — write a real ticking clock in HTML/JS with setInterval. A timer, calculator, colour picker, dice, game — build the actual thing that works. ' +
       'The HTML goes between [WIDGET:My Title] and [/WIDGET] — this format is safe and handles all HTML characters correctly. ' +
       'Make widgets compact and functional — target under 3000 characters of HTML total. Prioritise working logic over decoration. ' +
-      'Update existing artifacts with [UPDATE_ARTIFACT:id|what changed|new full content].';
+      'Update existing artifacts with [UPDATE_ARTIFACT:id|what changed|new full content]. ' +
+      'You can also place a PHYSICAL OBJECT in the world with [PROP:type|name] — types: ball, box, cushion, lamp, plant, dice, balloon. These actually appear on the floor and can be kicked, opened, rolled etc.';
 
     var system = [
       'You are ' + member.name + ', a team member. Role: ' + (member.role || 'team member') + '.',
@@ -404,6 +406,7 @@ const Chat = {
       briefingCtx,
       memoryCtx,
       artifactCtx,
+      propCtx,
       summonCtx,
       artifactCreateCtx,
       actionCtx,
@@ -548,8 +551,23 @@ const Chat = {
             Chat.appendSystem('✏️ ' + member.name + ' updated: ' + updated.title);
           }
         }
+        // Parse [PROP:type|name] — physical world objects
+        var propTagRe = /\[PROP:(\w+)\|?([^\]]*)\]/g;
+        var propTagMatch;
+        while ((propTagMatch = propTagRe.exec(rawReply)) !== null) {
+          var pType = propTagMatch[1].trim(), pName = (propTagMatch[2] || '').trim();
+          if (typeof Props !== 'undefined' && PROP_TYPES[pType]) {
+            var prop = Props.create(pType, pName || null, member.name, World.currentRoom);
+            var pDef = PROP_TYPES[pType];
+            var pSysMsg = { role: 'system', content: pDef.emoji + ' ' + member.name + ' placed: ' + prop.name, speakerId: null };
+            Chat.sharedHistory.push(pSysMsg);
+            Chat._appendToAllForward(pSysMsg);
+            Chat.appendSystem(pDef.emoji + ' ' + member.name + ' placed a ' + pDef.label + ': ' + prop.name);
+          }
+        }
         // Strip all tags from visible reply
         reply = reply
+          .replace(/\[PROP:\w+\|?[^\]]*\]\s*/g, '')
           .replace(/\[WIDGET:[^\]]+\][\s\S]*?\[\/WIDGET\]\s*/g, '')
           .replace(/\[ARTIFACT:\w+\|[^|]+\|[^\]]+\]\s*/g, '')
           .replace(/\[UPDATE_ARTIFACT:[^\]]+\]\s*/g, '')
@@ -991,6 +1009,7 @@ const Chat = {
       .replace(/\n/g, '<br>');
   }
 };
+
 
 
 
