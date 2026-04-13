@@ -89,6 +89,7 @@ const App = {
     if (!this.state.conversations)  this.state.conversations  = {};
     if (!this.state.stageIds)       this.state.stageIds       = [];
     if (this.state.stageTalkingId === undefined) this.state.stageTalkingId = null;
+    if (!this.state.artifacts)      this.state.artifacts      = [];
     // Migrate any flat chatHistory arrays to two-layer format {summary,recent}
     Object.keys(this.state.chatHistory).forEach(function(id) {
       var h = App.state.chatHistory[id];
@@ -249,3 +250,4 @@ document.addEventListener('DOMContentLoaded', () => {
   if (saved) { App.pin = saved; App.init(); }
   else { document.getElementById('pin-overlay').style.display = 'flex'; }
 });
+
