@@ -702,3 +702,16 @@ body {
 
 
 
+
+
+/* ── WIDGET ARTIFACT ──────────────────────────────── */
+.artifact-widget {
+  cursor: pointer;
+}
+.artifact-widget:hover {
+  transform: scale(1.04) translateY(-3px);
+}
+#artifact-modal-body iframe {
+  background: #0a0820;
+  border-radius: 4px;
+}
