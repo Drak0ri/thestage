@@ -221,6 +221,7 @@ const World = {
     this.currentRoom = roomId;
     Chat.closePanel();
     if (typeof WorldObjects !== 'undefined') WorldObjects.onRoomSwitch();
+    if (typeof Props !== 'undefined') Props.onRoomSwitch();
     this._buildFloor(); this._buildBgCanvas();
     this.render();
     App.setStatus('Entered ' + ROOMS[roomId].statusLabel);
@@ -839,4 +840,5 @@ const World = {
     if (typeof Roster !== 'undefined') Roster.render();
   }
 };
+
 
