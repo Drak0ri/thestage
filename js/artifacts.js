@@ -45,24 +45,25 @@ const WorldObjects = {
 
     var containerW = (layer.parentElement && layer.parentElement.offsetWidth) || 700;
     var containerH = (layer.parentElement && layer.parentElement.offsetHeight) || 320;
-    var FLOOR_H = 58;
     var CARD_W  = 72;
     var CARD_H  = 58;
 
-    // Place cards along the back wall area, evenly distributed with some vertical stagger
-    var count   = visible.length;
-    var usableW = containerW - 80;
-    var startX  = 40;
-    var spacingX = count > 1 ? Math.min(100, usableW / (count - 1)) : 0;
+    // Cards sit in the BACK of the room — well above the avatar zone (avatars occupy ~58-173px from bottom)
+    // Placing cards at 195px+ from bottom means zero overlap with any avatar
+    var CARD_BOTTOM_BASE = 195;
+
+    var count    = visible.length;
+    var usableW  = containerW - 80;
+    var startX   = 40;
+    var spacingX = count > 1 ? Math.min(110, usableW / (count - 1)) : 0;
     if (count === 1) startX = Math.round(containerW / 2 - CARD_W / 2);
 
     visible.forEach(function(artifact, i) {
       var type = ARTIFACT_TYPES[artifact.type] || ARTIFACT_TYPES.note;
       var x    = Math.round(startX + i * spacingX);
-      // Stagger vertically — alternating heights for visual depth
-      var staggerY = (i % 2 === 0) ? 0 : 8;
-      // Cards sit at floor level: bottom = FLOOR_H px, so top = containerH - FLOOR_H - CARD_H - staggerY
-      var bottom   = FLOOR_H + staggerY;
+      // Subtle alternating depth stagger — reads as perspective
+      var staggerY = (i % 2 === 0) ? 0 : 10;
+      var bottom   = CARD_BOTTOM_BASE + staggerY;
 
       var card = document.createElement('div');
       card.className = 'artifact-card';
@@ -287,5 +288,6 @@ const WorldObjects = {
       lines.join('\n');
   },
 };
+
 
 
