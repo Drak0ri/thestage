@@ -113,6 +113,9 @@ body {
   z-index: 15;
   pointer-events: none;
 }
+#chars-layer .character {
+  pointer-events: all;
+}
 #world-hud {
   position: absolute;
   bottom: 8px;
@@ -690,6 +693,7 @@ body {
   min-height: 80px;
   max-height: 55vh;
 }
+
 
 
 
