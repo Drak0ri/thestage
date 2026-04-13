@@ -111,6 +111,7 @@ body {
   position: absolute;
   inset: 0;
   z-index: 15;
+  pointer-events: none;
 }
 #world-hud {
   position: absolute;
@@ -661,7 +662,7 @@ body {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 5;
+  z-index: 18;
 }
 
 /* ── ARTIFACT MODAL ───────────────────────────────── */
@@ -690,3 +691,4 @@ body {
   min-height: 80px;
   max-height: 55vh;
 }
+
