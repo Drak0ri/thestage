@@ -266,6 +266,7 @@ const World = {
     if      (this.currentRoom === 'stage')      this._drawStageRoom(ctx, W, H);
     else if (this.currentRoom === 'boardroom')  this._drawBoardroom(ctx, W, H);
     else if (this.currentRoom === 'playground') this._drawPlayground(ctx, W, H);
+    else if (this.currentRoom === 'classroom')  this._drawClassroom(ctx, W, H);
   },
 
   _drawStageRoom(ctx,W,H) {
@@ -341,6 +342,136 @@ const World = {
     [[60,H-FLOOR_H],[160,H-FLOOR_H],[W-80,H-FLOOR_H],[W-200,H-FLOOR_H]].forEach(function(t,ti){ctx.fillStyle='#6b3a1a';ctx.fillRect(t[0]-4,t[1]-35,8,35);ctx.fillStyle=tc[ti%tc.length];ctx.fillRect(t[0]-18,t[1]-55,36,20);ctx.fillRect(t[0]-14,t[1]-70,28,18);ctx.fillRect(t[0]-10,t[1]-82,20,14);ctx.fillStyle='rgba(150,255,150,0.3)';ctx.fillRect(t[0]-10,t[1]-68,10,8);});
     [{x:120,y:H-FLOOR_H-8,c:'#ff4444',s:10},{x:300,y:H-FLOOR_H-6,c:'#4444ff',s:8},{x:480,y:H-FLOOR_H-9,c:'#ffaa00',s:11},{x:650,y:H-FLOOR_H-7,c:'#aa44ff',s:9}].forEach(function(sh){ctx.fillStyle=sh.c;ctx.beginPath();ctx.arc(sh.x,sh.y,sh.s,0,Math.PI*2);ctx.fill();ctx.fillStyle='rgba(255,255,255,0.4)';ctx.beginPath();ctx.arc(sh.x-sh.s*0.3,sh.y-sh.s*0.3,sh.s*0.3,0,Math.PI*2);ctx.fill();});
     for(var hx=W/2-80;hx<W/2+80;hx+=36){ctx.strokeStyle='rgba(255,200,50,0.25)';ctx.lineWidth=2;ctx.strokeRect(hx,H-FLOOR_H-2,32,20);}
+  },
+
+  _drawClassroom(ctx, W, H) {
+    var floor = H - FLOOR_H;
+    // Sky / ceiling — warm classroom light
+    var skyGrad = ctx.createLinearGradient(0, 0, 0, floor);
+    skyGrad.addColorStop(0, '#0d1118');
+    skyGrad.addColorStop(1, '#1a1f10');
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, W, floor);
+
+    // Back wall — warm plaster
+    ctx.fillStyle = '#1e1c12';
+    ctx.fillRect(0, 0, W, floor);
+
+    // Windows left and right — daylight spilling in
+    var winW = Math.round(W * 0.10), winH = Math.round((floor) * 0.45), winY = Math.round(floor * 0.08);
+    [[Math.round(W * 0.04)], [Math.round(W * 0.86)]].forEach(function(wx) {
+      ctx.fillStyle = '#1a2840';
+      ctx.fillRect(wx[0], winY, winW, winH);
+      // Window panes
+      ctx.strokeStyle = '#2a3a50'; ctx.lineWidth = 2;
+      ctx.strokeRect(wx[0], winY, winW, winH);
+      ctx.beginPath(); ctx.moveTo(wx[0] + winW/2, winY); ctx.lineTo(wx[0] + winW/2, winY + winH); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(wx[0], winY + winH/2); ctx.lineTo(wx[0] + winW, winY + winH/2); ctx.stroke();
+      // Light spill
+      var spill = ctx.createRadialGradient(wx[0] + winW/2, winY + winH/2, 0, wx[0] + winW/2, winY + winH/2, winW * 2);
+      spill.addColorStop(0, 'rgba(180,210,255,0.07)');
+      spill.addColorStop(1, 'rgba(180,210,255,0)');
+      ctx.fillStyle = spill;
+      ctx.fillRect(0, 0, W, floor);
+      // Curtains
+      ctx.fillStyle = '#2a1a0a';
+      ctx.fillRect(wx[0] - 8, winY - 4, 10, winH + 8);
+      ctx.fillRect(wx[0] + winW - 2, winY - 4, 10, winH + 8);
+    });
+
+    // Chalkboard — centre back wall, the star of the room
+    var cbX = Math.round(W * 0.18), cbW = Math.round(W * 0.64);
+    var cbY = Math.round(floor * 0.05), cbH = Math.round(floor * 0.52);
+    // Board frame (dark wood)
+    ctx.fillStyle = '#2a1a08';
+    ctx.fillRect(cbX - 10, cbY - 8, cbW + 20, cbH + 16);
+    ctx.strokeStyle = '#3a2810'; ctx.lineWidth = 3;
+    ctx.strokeRect(cbX - 10, cbY - 8, cbW + 20, cbH + 16);
+    // Board surface — deep slate green
+    var boardGrad = ctx.createLinearGradient(cbX, cbY, cbX + cbW, cbY + cbH);
+    boardGrad.addColorStop(0, '#1a2e1a');
+    boardGrad.addColorStop(0.5, '#1e3320');
+    boardGrad.addColorStop(1, '#182818');
+    ctx.fillStyle = boardGrad;
+    ctx.fillRect(cbX, cbY, cbW, cbH);
+    // Board texture — subtle grain
+    ctx.fillStyle = 'rgba(255,255,255,0.015)';
+    for (var gy = cbY; gy < cbY + cbH; gy += 4) ctx.fillRect(cbX, gy, cbW, 1);
+    // Chalk residue / ghost marks
+    ctx.fillStyle = 'rgba(255,255,255,0.04)';
+    var ghostPhrases = [
+      {x:0.12, y:0.2, w:0.35, h:0.03},
+      {x:0.08, y:0.45, w:0.25, h:0.025},
+      {x:0.5,  y:0.3, w:0.4,  h:0.025},
+    ];
+    ghostPhrases.forEach(function(g) {
+      ctx.fillRect(cbX + g.x * cbW, cbY + g.y * cbH, g.w * cbW, g.h * cbH);
+    });
+    // Board edge highlight
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1;
+    ctx.strokeRect(cbX + 2, cbY + 2, cbW - 4, cbH - 4);
+    // Chalk tray
+    ctx.fillStyle = '#2a1a08';
+    ctx.fillRect(cbX - 10, cbY + cbH + 8, cbW + 20, 8);
+    ctx.fillStyle = '#fffde0';
+    for (var ci = 0; ci < 5; ci++) {
+      ctx.fillRect(cbX + 15 + ci * 28, cbY + cbH + 10, 20, 4);
+    }
+    // Eraser
+    ctx.fillStyle = '#8a7a6a';
+    ctx.fillRect(cbX + cbW - 50, cbY + cbH + 9, 36, 6);
+
+    // Overhead strip lights
+    var lightY = 8;
+    [W * 0.25, W * 0.5, W * 0.75].forEach(function(lx) {
+      ctx.fillStyle = 'rgba(255,250,220,0.7)';
+      ctx.fillRect(lx - 30, lightY, 60, 4);
+      var lg = ctx.createRadialGradient(lx, lightY + 2, 0, lx, lightY + 50, 80);
+      lg.addColorStop(0, 'rgba(255,250,220,0.12)');
+      lg.addColorStop(1, 'rgba(255,250,220,0)');
+      ctx.fillStyle = lg;
+      ctx.fillRect(lx - 80, lightY, 160, 100);
+    });
+
+    // Student desks — two rows
+    var deskColor = '#3a2a10', deskTop = '#4a3618', deskShadow = '#2a1c08';
+    var deskPositions = [0.12, 0.28, 0.44, 0.60, 0.76, 0.90];
+    // Back row (smaller, higher up = further away)
+    deskPositions.forEach(function(xf) {
+      var dx = Math.round(W * xf - 20), dy = floor - 28;
+      var dw = 42, dh = 10;
+      ctx.fillStyle = deskShadow; ctx.fillRect(dx + 3, dy + dh, dw - 6, 4);
+      ctx.fillStyle = deskColor;  ctx.fillRect(dx, dy, dw, dh);
+      ctx.fillStyle = deskTop;    ctx.fillRect(dx + 2, dy, dw - 4, dh - 3);
+      // Legs
+      ctx.fillStyle = deskShadow;
+      ctx.fillRect(dx + 4,  dy + dh, 4, 12);
+      ctx.fillRect(dx + dw - 8, dy + dh, 4, 12);
+    });
+
+    // Teacher's desk — front left, larger
+    var tdX = Math.round(W * 0.04), tdY = floor - 32, tdW = 80, tdH = 14;
+    ctx.fillStyle = '#1e1208'; ctx.fillRect(tdX + 4, tdY + tdH, tdW - 8, 6);
+    ctx.fillStyle = '#2e1e0a'; ctx.fillRect(tdX, tdY, tdW, tdH);
+    ctx.fillStyle = '#3a280e'; ctx.fillRect(tdX + 2, tdY, tdW - 4, tdH - 4);
+    ctx.fillStyle = '#1e1208';
+    ctx.fillRect(tdX + 6,  tdY + tdH, 5, 16);
+    ctx.fillRect(tdX + tdW - 11, tdY + tdH, 5, 16);
+    // Mug on teacher's desk
+    ctx.fillStyle = '#cc3322'; ctx.fillRect(tdX + tdW - 22, tdY - 8, 10, 9);
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(tdX + tdW - 21, tdY - 7, 8, 3);
+
+    // Floor — warm worn wood
+    var floorGrad = ctx.createLinearGradient(0, floor, 0, H);
+    floorGrad.addColorStop(0, 'rgba(255,220,160,0.08)');
+    floorGrad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = floorGrad;
+    ctx.fillRect(0, floor, W, H - floor);
+    // Floor planks
+    ctx.strokeStyle = 'rgba(0,0,0,0.2)'; ctx.lineWidth = 1;
+    for (var px = 0; px < W; px += Math.round(W / 10)) {
+      ctx.beginPath(); ctx.moveTo(px, floor); ctx.lineTo(px, H); ctx.stroke();
+    }
   },
 
   setMeetingMode(on) { this.meetingMode = on; this.render(); },
@@ -840,5 +971,6 @@ const World = {
     if (typeof Roster !== 'undefined') Roster.render();
   }
 };
+
 
 
