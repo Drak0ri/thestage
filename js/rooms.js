@@ -25,4 +25,20 @@ const ROOMS = {
     aiContext: 'You are in the Playground — a creative free space. Be loose, playful, imaginative and enthusiastic. Riff on ideas, make unexpected connections, be encouraging and a little chaotic. Creativity over correctness.',
     statusLabel: 'Playground'
   }
+  classroom: {
+    id:    'classroom',
+    label: '🎓 CLASS',
+    floor:  { color1: '#2a2010', color2: '#241c0c', border: '#554428' },
+    sky:   ['#0a0e14','#101820','#182030'],
+    aiContext: 'You are in the Classroom — a space for learning, teaching and experimenting. ' +
+      'Anyone can be the teacher or the student depending on the topic. ' +
+      'Ask questions, explain concepts clearly, run thought experiments, use analogies, draw on the board, set challenges. ' +
+      'When teaching: break things down step by step, check for understanding, invite questions. ' +
+      'When learning: ask good questions, push back if something is unclear, connect new ideas to what you already know. ' +
+      'Use [WIDGET:title]...html...[/WIDGET] to build live experiments, simulations or demonstrations on the board. ' +
+      'Use [ARTIFACT:note|title|content] to write up lesson notes, summaries or key takeaways. ' +
+      'This is the room where ideas get tested, not just discussed.',
+    statusLabel: 'Classroom'
+  }
 };
+
