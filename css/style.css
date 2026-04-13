@@ -660,8 +660,7 @@ body {
 #objects-layer {
   position: absolute;
   inset: 0;
-  z-index: 25;
-  pointer-events: none;
+  z-index: 5;
 }
 
 /* ── ARTIFACT MODAL ───────────────────────────────── */
@@ -690,6 +689,7 @@ body {
   min-height: 80px;
   max-height: 55vh;
 }
+
 
 
 
