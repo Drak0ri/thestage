@@ -545,3 +545,49 @@ body {
   transition: border-color 0.15s, color 0.15s;
 }
 .font-btn:hover { border-color: var(--accent-bright); color: var(--text-bright); }
+
+
+/* ── WORLD HAND RAISE ─────────────────────────────── */
+.char-hand {
+  position: absolute;
+  top: -22px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 16px;
+  cursor: pointer;
+  pointer-events: all;
+  animation: char-hand-wave 0.7s ease-in-out infinite;
+  z-index: 30;
+  line-height: 1;
+  filter: drop-shadow(0 0 4px rgba(255,204,68,0.8));
+}
+@keyframes char-hand-wave {
+  0%   { transform: translateX(-50%) rotate(-20deg) translateY(0px); }
+  25%  { transform: translateX(-50%) rotate(10deg)  translateY(-4px); }
+  50%  { transform: translateX(-50%) rotate(-15deg) translateY(-2px); }
+  75%  { transform: translateX(-50%) rotate(5deg)   translateY(-5px); }
+  100% { transform: translateX(-50%) rotate(-20deg) translateY(0px); }
+}
+/* agent-to-agent continue prompt */
+.msg.continue-prompt {
+  background: rgba(255,204,68,0.08);
+  border: 1px solid rgba(255,204,68,0.3);
+  border-radius: 6px;
+  padding: 8px 10px;
+  text-align: center;
+  font-size: 7px;
+  color: var(--gold);
+  margin: 6px 0;
+}
+.msg.continue-prompt button {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 6px;
+  background: rgba(255,204,68,0.15);
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  padding: 4px 8px;
+  cursor: pointer;
+  border-radius: 3px;
+  margin: 4px 3px 0;
+}
+.msg.continue-prompt button:hover { background: rgba(255,204,68,0.3); }
