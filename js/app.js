@@ -81,12 +81,60 @@ const App = {
 
   startLocal() {
     App.localMode = true;
-    App.localModel = (document.getElementById('local-model').value || 'qwen3:1.7b').trim();
+    App.localModel = (document.getElementById('local-model-select')?.value || 'qwen3:1.7b').trim();
     App.pin = 'local';
     sessionStorage.setItem('stage_local', '1');
     sessionStorage.setItem('stage_local_model', App.localModel);
     document.getElementById('pin-overlay').style.display = 'none';
     App.init();
+  },
+
+  async detectOllamaModels() {
+    var btn = document.querySelector('#ollama-detect-area button');
+    var origText = btn.textContent;
+    btn.textContent = '\u231B DETECTING...';
+    btn.disabled = true;
+    try {
+      var resp = await fetch('http://localhost:11434/api/tags');
+      var data = await resp.json();
+      var models = (data.models || []).map(function(m) { return m.name; });
+      if (!models.length) {
+        App.setStatus('Ollama running but no models found — run: ollama pull <model>');
+        btn.textContent = origText;
+        btn.disabled = false;
+        return;
+      }
+      var select = document.getElementById('local-model-select');
+      select.innerHTML = '';
+      // Check if we have a previously used model
+      var lastModel = sessionStorage.getItem('stage_local_model') || '';
+      models.forEach(function(name) {
+        var opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        if (name === lastModel) opt.selected = true;
+        select.appendChild(opt);
+      });
+      document.getElementById('ollama-detect-area').style.display = 'none';
+      document.getElementById('ollama-picker').style.display = 'flex';
+    } catch (e) {
+      btn.textContent = origText;
+      btn.disabled = false;
+      App.setStatus('Could not connect to Ollama — is it running? (localhost:11434)');
+      // Show a brief red flash on the button
+      btn.style.borderColor = '#cc4444';
+      btn.style.background = '#442222';
+      setTimeout(function() {
+        btn.style.borderColor = '#44cc66';
+        btn.style.background = '#227744';
+      }, 1500);
+    }
+  },
+
+  startLocalWithSelection() {
+    var select = document.getElementById('local-model-select');
+    App.localModel = select ? select.value : 'qwen3:1.7b';
+    App.startLocal();
   },
 
   submitPin() {
