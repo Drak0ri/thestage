@@ -383,16 +383,13 @@ const Chat = {
       ? 'PROJECT CONTEXT: ' + App.state.briefing : '';
 
     var artifactCtx = (typeof WorldObjects !== 'undefined') ? WorldObjects.getContextString(World.currentRoom) : '';
-    var artifactCreateCtx = 'You can create persistent artifacts visible to everyone using [ARTIFACT:type|title|content]. ' +
-      'Types: note, doc, plan, code, idea, list, decision. ' +
-      'IMPORTANT: You can also create REAL WORKING THINGS using type "widget". ' +
-      'A widget is a complete self-contained HTML page (with inline CSS and JS, no external dependencies) that actually runs in the world. ' +
-      'If someone wants a clock — build a real working clock in HTML. A timer — build a real timer. A calculator, a counter, a game, a visualization — build the actual thing. ' +
-      'The widget content must be a full HTML document: <!DOCTYPE html><html>...<style>...</style>...<script>...</script></html>. ' +
-      'Keep it compact. Use dark backgrounds. Make it visually clear and functional. ' +
-      'Use [ARTIFACT:widget|Clock|<!DOCTYPE html>...full html here...] — the entire HTML goes in the content field. ' +
-      'Use widgets for anything interactive or visual. Use text types for documents and notes. ' +
-      'You can update any artifact with [UPDATE_ARTIFACT:id|what changed|new full content].';
+    var artifactCreateCtx = 'You can create persistent artifacts using [ARTIFACT:type|title|content] — types: note, doc, plan, code, idea, list, decision. ' +
+      'IMPORTANT — for anything interactive or visual, use the WIDGET format: [WIDGET:title]...complete HTML...[/WIDGET] ' +
+      'A widget is a full self-contained HTML page with inline CSS+JS. No external dependencies. Dark background (#0a0820 or similar). ' +
+      'If someone wants a clock — write a real ticking clock in HTML/JS with setInterval. A timer, calculator, colour picker, dice, game — build the actual thing that works. ' +
+      'The HTML goes between [WIDGET:My Title] and [/WIDGET] — this format is safe and handles all HTML characters correctly. ' +
+      'Make widgets compact, beautiful and functional. ' +
+      'Update existing artifacts with [UPDATE_ARTIFACT:id|what changed|new full content].';
 
     var system = [
       'You are ' + member.name + ', a team member. Role: ' + (member.role || 'team member') + '.',
@@ -509,9 +506,20 @@ const Chat = {
         }
       }
 
-      // ── Parse ARTIFACT and UPDATE_ARTIFACT tags ────────────────────────
+      // ── Parse WIDGET, ARTIFACT and UPDATE_ARTIFACT tags ─────────────────
       if (typeof WorldObjects !== 'undefined') {
-        // Extract [ARTIFACT:type|title|content]
+        // [WIDGET:title]...html...[/WIDGET] — fenced format, safe for HTML content
+        var widgetRe = /\[WIDGET:([^\]]+)\]([\s\S]*?)\[\/WIDGET\]/g;
+        var widgetMatch;
+        while ((widgetMatch = widgetRe.exec(rawReply)) !== null) {
+          var wTitle = widgetMatch[1].trim(), wContent = widgetMatch[2].trim();
+          var artifact = WorldObjects.create('widget', wTitle, wContent, member.id, member.name, World.currentRoom);
+          var sysMsg = { role: 'system', content: '⚙️ ' + member.name + ' built: "' + artifact.title + '"', speakerId: null };
+          Chat.sharedHistory.push(sysMsg);
+          Chat._appendToAllForward(sysMsg);
+          Chat.appendSystem('⚙️ ' + member.name + ' built: ' + artifact.title + ' — click it in the world to open');
+        }
+        // [ARTIFACT:type|title|content] for text artifacts
         var artTagRe = /\[ARTIFACT:(\w+)\|([^|]+)\|([^\]]+)\]/g;
         var artTagMatch;
         while ((artTagMatch = artTagRe.exec(rawReply)) !== null) {
@@ -521,9 +529,9 @@ const Chat = {
           var sysMsg = { role: 'system', content: typeInfo.icon + ' ' + member.name + ' created a ' + artifact.type + ': "' + artifact.title + '"', speakerId: null };
           Chat.sharedHistory.push(sysMsg);
           Chat._appendToAllForward(sysMsg);
-          Chat.appendSystem(typeInfo.icon + ' ' + member.name + ' created: ' + artifact.title + ' — click the card in the world to read it');
+          Chat.appendSystem(typeInfo.icon + ' ' + member.name + ' created: ' + artifact.title + ' — click the card to read it');
         }
-        // Extract [UPDATE_ARTIFACT:id|note|new content]
+        // [UPDATE_ARTIFACT:id|note|new content]
         var updTagRe = /\[UPDATE_ARTIFACT:([^\|]+)\|([^|]*)\|([^\]]+)\]/g;
         var updTagMatch;
         while ((updTagMatch = updTagRe.exec(rawReply)) !== null) {
@@ -536,8 +544,9 @@ const Chat = {
             Chat.appendSystem('✏️ ' + member.name + ' updated: ' + updated.title);
           }
         }
-        // Strip artifact tags from visible reply
+        // Strip all tags from visible reply
         reply = reply
+          .replace(/\[WIDGET:[^\]]+\][\s\S]*?\[\/WIDGET\]\s*/g, '')
           .replace(/\[ARTIFACT:\w+\|[^|]+\|[^\]]+\]\s*/g, '')
           .replace(/\[UPDATE_ARTIFACT:[^\]]+\]\s*/g, '')
           .trim();
@@ -978,5 +987,6 @@ const Chat = {
       .replace(/\n/g, '<br>');
   }
 };
+
 
 
