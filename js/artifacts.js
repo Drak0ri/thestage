@@ -92,7 +92,7 @@ const WorldObjects = {
       var badge = document.createElement('div');
       badge.style.cssText = 'font-family:"Press Start 2P",monospace;font-size:4px;color:' + type.border + ';' +
         'background:rgba(255,255,255,0.6);padding:1px 3px;border-radius:1px;width:100%;text-align:center;' +
-        'box-sizing:border-box;margin-bottom:2px;overflow:hidden;white-space:nowrap;';
+        'box-sizing:border-box;margin-bottom:2px;overflow:hidden;white-space:nowrap;pointer-events:none;';
       badge.textContent = type.icon + ' ' + type.label;
       card.appendChild(badge);
 
@@ -100,14 +100,14 @@ const WorldObjects = {
       var titleEl = document.createElement('div');
       titleEl.style.cssText = 'font-family:"Press Start 2P",monospace;font-size:4px;color:#111;' +
         'text-align:center;line-height:1.5;overflow:hidden;flex:1;display:flex;align-items:center;' +
-        'justify-content:center;padding:0 2px;word-break:break-word;';
+        'justify-content:center;padding:0 2px;word-break:break-word;pointer-events:none;';
       titleEl.textContent = artifact.title.substring(0, 24);
       card.appendChild(titleEl);
 
       // Author tag
       var authorEl = document.createElement('div');
       authorEl.style.cssText = 'font-family:"Press Start 2P",monospace;font-size:3px;color:' + type.border + ';' +
-        'opacity:0.8;margin-top:2px;';
+        'opacity:0.8;margin-top:2px;pointer-events:none;';
       authorEl.textContent = '\u2014 ' + (artifact.authorName || '?').split(' ')[0];
       card.appendChild(authorEl);
 
@@ -287,4 +287,5 @@ const WorldObjects = {
       lines.join('\n');
   },
 };
+
 
