@@ -90,6 +90,7 @@ const App = {
     if (!this.state.stageIds)       this.state.stageIds       = [];
     if (this.state.stageTalkingId === undefined) this.state.stageTalkingId = null;
     if (!this.state.artifacts)      this.state.artifacts      = [];
+    if (!this.state.props)          this.state.props          = [];
     // Migrate any flat chatHistory arrays to two-layer format {summary,recent}
     Object.keys(this.state.chatHistory).forEach(function(id) {
       var h = App.state.chatHistory[id];
@@ -104,6 +105,7 @@ const App = {
     World.init();
     Chat.init();
     if (typeof Roster !== 'undefined') Roster.init();
+    if (typeof Props !== 'undefined') Props.init();
     this._bindToolbar();
     this._bindModal();
     // Restore hybrid toggle
@@ -250,4 +252,5 @@ document.addEventListener('DOMContentLoaded', () => {
   if (saved) { App.pin = saved; App.init(); }
   else { document.getElementById('pin-overlay').style.display = 'flex'; }
 });
+
 
