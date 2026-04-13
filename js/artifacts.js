@@ -243,6 +243,8 @@ const WorldObjects = {
     var artifact = (App.state.artifacts || []).find(function(a) { return a.id === id; });
     if (!artifact) return;
     this._viewingId = id;
+    artifact.lastUsed = Date.now();
+    artifact.expiryWarned = false;
     var type = ARTIFACT_TYPES[artifact.type] || ARTIFACT_TYPES.note;
 
     document.getElementById('artifact-modal-icon').textContent = type.icon;
@@ -312,6 +314,8 @@ const WorldObjects = {
       authorName: authorName,
       room: room || (typeof World !== 'undefined' ? World.currentRoom : 'stage'),
       createdAt: Date.now(),
+      lastUsed: Date.now(),
+      expiryWarned: false,
       updates: [],
     };
     App.state.artifacts.push(artifact);
@@ -325,9 +329,66 @@ const WorldObjects = {
     if (!artifact) return null;
     artifact.updates.push({ authorName: authorName, note: updateNote || 'updated', prevContent: artifact.content, at: Date.now() });
     artifact.content = newContent;
+    artifact.lastUsed = Date.now();
+    artifact.expiryWarned = false;
     Storage.cloudSave(App.state);
     this.render();
     return artifact;
+  },
+
+  // ── Expiry system: 3hr unused → warn creator → 30min grace → remove ──────
+  checkExpiry() {
+    var now = Date.now();
+    var THREE_HOURS = 3 * 60 * 60 * 1000;
+    var THIRTY_MIN  = 30 * 60 * 1000;
+    var artifacts = App.state.artifacts || [];
+    var changed = false;
+    var toRemove = [];
+
+    artifacts.forEach(function(a) {
+      var lastUsed = a.lastUsed || a.createdAt || now;
+      var age = now - lastUsed;
+
+      if (a.expiryWarned) {
+        // Already warned — check if 30min grace expired
+        var warnAge = now - (a.expiryWarnedAt || lastUsed);
+        if (warnAge > THIRTY_MIN) {
+          toRemove.push(a);
+        }
+      } else if (age > THREE_HOURS) {
+        // First time exceeding 3hr — mark as warned
+        a.expiryWarned = true;
+        a.expiryWarnedAt = now;
+        changed = true;
+        if (typeof Chat !== 'undefined') {
+          Chat.appendSystem('⏳ "' + a.title + '" by ' + (a.authorName || '?') + ' hasn\'t been used in 3 hours. It will be removed in 30 minutes unless used.');
+        }
+      }
+    });
+
+    toRemove.forEach(function(a) {
+      App.state.artifacts = App.state.artifacts.filter(function(x) { return x.id !== a.id; });
+      changed = true;
+      if (typeof Chat !== 'undefined') {
+        Chat.appendSystem('🗑 "' + a.title + '" expired — unused for too long.');
+      }
+    });
+
+    if (changed) {
+      Storage.cloudSave(App.state);
+      this.render();
+    }
+  },
+
+  // Remove artifact only if the requester is the author
+  removeByAuthor(id, requesterId) {
+    var artifact = (App.state.artifacts || []).find(function(a) { return a.id === id; });
+    if (!artifact) return false;
+    if (artifact.authorId !== requesterId) return false;
+    App.state.artifacts = App.state.artifacts.filter(function(a) { return a.id !== id; });
+    Storage.cloudSave(App.state);
+    this.render();
+    return true;
   },
 
   getContextString(room) {
