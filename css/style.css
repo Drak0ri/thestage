@@ -665,7 +665,9 @@ body {
   position: absolute;
   inset: 0;
   z-index: 6;
-  pointer-events: none;
+}
+.artifact-card {
+  cursor: pointer;
 }
 
 /* ── ARTIFACT MODAL ───────────────────────────────── */
@@ -715,3 +717,4 @@ body {
   background: #0a0820;
   border-radius: 4px;
 }
+
