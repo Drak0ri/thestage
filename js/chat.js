@@ -413,6 +413,40 @@ const Chat = {
       'Keep responses SHORT (2-3 sentences unless creating an artifact). Stay in character. Never break character. Do not prefix your reply with your own name.',
     ].filter(Boolean).join(' ');
 
+    // ── Smart model selection ─────────────────────────────────────────────────
+    // Haiku for normal chat, Sonnet for complex tasks that need it
+    var lastUserMsg = '';
+    for (var mi = messages.length - 1; mi >= 0; mi--) {
+      if (messages[mi].role === 'user') { lastUserMsg = messages[mi].content.toLowerCase(); break; }
+    }
+    var SONNET_TRIGGERS = ['widget', 'build', 'create a', 'make a', 'code', 'simulate', 'experiment',
+      'visuali', 'diagram', 'calculat', 'algorithm', 'teach me', 'explain how', 'step by step',
+      'function', 'script', 'program', 'html', 'javascript', 'css', 'game', 'animation', 'chart'];
+    var needsSonnet = SONNET_TRIGGERS.some(function(t) { return lastUserMsg.indexOf(t) !== -1; });
+
+    // Respect manual override from App._modelMode
+    var chosenModel;
+    if (App._modelMode === 'sonnet') {
+      chosenModel = 'claude-sonnet-4-6'; needsSonnet = true;
+    } else if (App._modelMode === 'haiku') {
+      chosenModel = 'claude-haiku-4-5-20251001'; needsSonnet = false;
+    } else {
+      chosenModel = needsSonnet ? 'claude-sonnet-4-6' : 'claude-haiku-4-5-20251001';
+    }
+
+    // If upgrading, show a subtle indicator and optionally prompt user
+    if (needsSonnet && App.modelPromptEnabled !== false) {
+      var indicator = document.getElementById('model-indicator');
+      if (indicator) {
+        indicator.textContent = '✦ Sonnet';
+        indicator.style.color = '#ffcc44';
+        indicator.title = 'Using Sonnet for this complex request';
+        setTimeout(function() {
+          if (indicator) { indicator.textContent = '◆ Haiku'; indicator.style.color = '#88aaff'; indicator.title = 'Using Haiku'; }
+        }, 8000);
+      }
+    }
+
     try {
       var rawReply;
       if (App.localMode || App.useLocal) {
@@ -431,7 +465,7 @@ const Chat = {
         var resp = await fetch('https://script.google.com/macros/s/AKfycbxUtte8plGg9O0pPXeedpm9oKhXBndYHOMYRBWxhbHM26ZChBcbhnzBiv7x_zJPVGRq/exec', {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify({ pin: App.pin, model: 'claude-haiku-4-5-20251001', max_tokens: 4000, system: system, messages: messages })
+          body: JSON.stringify({ pin: App.pin, model: chosenModel, max_tokens: needsSonnet ? 4000 : 1500, system: system, messages: messages })
         });
         var data = await resp.json();
         rawReply = data.content && data.content[0] ? data.content[0].text : '...';
@@ -1009,6 +1043,7 @@ const Chat = {
       .replace(/\n/g, '<br>');
   }
 };
+
 
 
 
