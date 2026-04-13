@@ -431,7 +431,7 @@ const Chat = {
         var resp = await fetch('https://script.google.com/macros/s/AKfycbxUtte8plGg9O0pPXeedpm9oKhXBndYHOMYRBWxhbHM26ZChBcbhnzBiv7x_zJPVGRq/exec', {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify({ pin: App.pin, model: 'claude-sonnet-4-6', max_tokens: 4000, system: system, messages: messages })
+          body: JSON.stringify({ pin: App.pin, model: 'claude-haiku-4-5-20251001', max_tokens: 4000, system: system, messages: messages })
         });
         var data = await resp.json();
         rawReply = data.content && data.content[0] ? data.content[0].text : '...';
@@ -757,7 +757,7 @@ const Chat = {
       } else {
         var resp = await fetch('https://script.google.com/macros/s/AKfycbxUtte8plGg9O0pPXeedpm9oKhXBndYHOMYRBWxhbHM26ZChBcbhnzBiv7x_zJPVGRq/exec', {
           method: 'POST', headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify({ pin: App.pin, model: 'claude-sonnet-4-6', max_tokens: 60, system: 'Reply with a single short sentence only.', messages: [{ role: 'user', content: prompt }] })
+          body: JSON.stringify({ pin: App.pin, model: 'claude-haiku-4-5-20251001', max_tokens: 60, system: 'Reply with a single short sentence only.', messages: [{ role: 'user', content: prompt }] })
         });
         var d = await resp.json();
         text = d.content && d.content[0] ? d.content[0].text : '';
@@ -986,7 +986,7 @@ const Chat = {
         } else {
           compactResp = await fetch('https://script.google.com/macros/s/AKfycbxUtte8plGg9O0pPXeedpm9oKhXBndYHOMYRBWxhbHM26ZChBcbhnzBiv7x_zJPVGRq/exec', {
             method: 'POST', headers: { 'Content-Type': 'text/plain' },
-            body: JSON.stringify({ pin: App.pin, model: 'claude-sonnet-4-6', max_tokens: 300, system: summarySystem, messages: [{ role: 'user', content: transcript }] })
+            body: JSON.stringify({ pin: App.pin, model: 'claude-haiku-4-5-20251001', max_tokens: 300, system: summarySystem, messages: [{ role: 'user', content: transcript }] })
           });
           var cd = await compactResp.json();
           if (cd.content && cd.content[0]) newSummary = cd.content[0].text.trim();
@@ -1009,6 +1009,7 @@ const Chat = {
       .replace(/\n/g, '<br>');
   }
 };
+
 
 
 
