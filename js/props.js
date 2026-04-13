@@ -186,6 +186,8 @@ const Props = {
   interact(id) {
     var p = (App.state.props || []).find(function(x) { return x.id === id; });
     if (!p) return;
+    p.lastUsed = Date.now();
+    p.expiryWarned = false;
     var def = PROP_TYPES[p.type] || {};
 
     if (def.interactive === 'kick') {
@@ -264,6 +266,8 @@ const Props = {
       y: 0,
       state: type === 'lamp' ? 'on' : (type === 'box' ? 'closed' : null),
       createdAt: Date.now(),
+      lastUsed: Date.now(),
+      expiryWarned: false,
     };
     App.state.props.push(prop);
     Storage.cloudSave(App.state);
@@ -282,6 +286,51 @@ const Props = {
 
   onRoomSwitch() { this.render(); },
   resize() {},
+
+  // ── Expiry: 3hr unused → warn → 30min grace → remove ──────────────────
+  checkExpiry() {
+    var now = Date.now();
+    var THREE_HOURS = 3 * 60 * 60 * 1000;
+    var THIRTY_MIN  = 30 * 60 * 1000;
+    var props = App.state.props || [];
+    var changed = false;
+    var toRemove = [];
+
+    props.forEach(function(p) {
+      var lastUsed = p.lastUsed || p.createdAt || now;
+      var age = now - lastUsed;
+      if (p.expiryWarned) {
+        var warnAge = now - (p.expiryWarnedAt || lastUsed);
+        if (warnAge > THIRTY_MIN) toRemove.push(p);
+      } else if (age > THREE_HOURS) {
+        p.expiryWarned = true;
+        p.expiryWarnedAt = now;
+        changed = true;
+        if (typeof Chat !== 'undefined') {
+          var def = PROP_TYPES[p.type] || {};
+          Chat.appendSystem('⏳ ' + (def.emoji || '') + ' "' + (p.name || 'item') + '" hasn\'t been used in 3 hours. Removing in 30 min unless used.');
+        }
+      }
+    });
+
+    toRemove.forEach(function(p) {
+      Props.remove(p.id);
+      changed = true;
+      if (typeof Chat !== 'undefined') {
+        Chat.appendSystem('🗑 "' + (p.name || 'item') + '" expired.');
+      }
+    });
+
+    if (changed) Storage.cloudSave(App.state);
+  },
+
+  removeByAuthor(id, authorName) {
+    var p = (App.state.props || []).find(function(x) { return x.id === id; });
+    if (!p) return false;
+    if (p.authorName !== authorName) return false;
+    this.remove(id);
+    return true;
+  },
 
   // Context string for character system prompts
   getContextString(room) {
