@@ -21,9 +21,23 @@ const Chat = {
     this.panel      = document.getElementById('chat-panel');
     this.messagesEl = document.getElementById('chat-messages');
     this.inputEl    = document.getElementById('chat-input');
+    this._stateLabel = document.getElementById('conv-state-label');
     document.getElementById('chat-close').addEventListener('click', function() { Chat.closePanel(); });
     document.getElementById('chat-send').addEventListener('click', function() { Chat.send(); });
     this.inputEl.addEventListener('keydown', function(e) { if (e.key === 'Enter') Chat.send(); });
+  },
+
+  // Set conversation state: 'idle' | 'thinking' | 'flowing' | 'your-turn'
+  _setState(state) {
+    this.panel.classList.remove('state-thinking', 'state-flowing', 'state-your-turn');
+    var labels = { thinking: '...thinking', flowing: 'in flow — they have more to say', 'your-turn': 'your turn' };
+    if (state === 'idle') {
+      if (this._stateLabel) this._stateLabel.textContent = '';
+    } else {
+      this.panel.classList.add('state-' + state);
+      if (this._stateLabel) this._stateLabel.textContent = labels[state] || '';
+    }
+    this.inputEl.disabled = (state === 'thinking' || state === 'flowing');
   },
 
   // Persist who is on stage so it survives refresh/reopen — debounced
@@ -234,6 +248,7 @@ const Chat = {
     if (!text || !this.talkingIds.length) return;
     this.inputEl.value = '';
     this._agentRounds = 0;  // reset round counter on each user message
+    this._setState('thinking');
 
     this.sharedHistory.push({ role: 'user', content: text, speakerId: null });
 
@@ -309,6 +324,7 @@ const Chat = {
   },
 
   async _getResponse(member, userText) {
+    this._setState('thinking');
     var thinking = document.createElement('div');
     thinking.className = 'msg ai thinking';
     thinking.textContent = '\u25cb ' + member.name + ' thinking...';
@@ -510,9 +526,16 @@ const Chat = {
 
       // Re-render header in case forwardIds changed
       this.renderPanel();
+      // Update conversation state
+      if (this.handRaisedIds.length > 0 || this._agentRunning) {
+        this._setState('flowing');
+      } else {
+        this._setState('your-turn');
+      }
 
     } catch(e) {
       thinking.remove();
+      this._setState('your-turn');
       var err = document.createElement('div');
       err.className = 'msg ai';
       var errSpeaker = document.createElement('div');
@@ -639,6 +662,12 @@ const Chat = {
       }
     } finally {
       this._agentRunning = false;
+      // After agent round ends, set final state
+      if (this.handRaisedIds.length > 0) {
+        this._setState('flowing');
+      } else {
+        this._setState('your-turn');
+      }
     }
   },
 
@@ -684,6 +713,7 @@ const Chat = {
     this.sharedHistory = [];
     this._restored     = false;
     this.panel.classList.remove('open');
+    this._setState('idle');
     this._saveStage();
     App.setStatus('stage is empty — use TEAM to summon someone');
     // Run compaction silently in the background
@@ -827,5 +857,6 @@ const Chat = {
       .replace(/\n/g,'<br>');
   }
 };
+
 
 
