@@ -16,7 +16,7 @@ const CLAUDE_SCALE_BONUS = 0.4; // Claude is this much bigger than others
 // Row 4 : hurt      6 frames  (hurt front)
 // Row 5 : thrust    8 frames  (thrust-right pointing)
 const SPRITE_FRAME = 64;
-const SPRITE_CDN   = 'https://cdn.jsdelivr.net/gh/Drak0ri/thestage-sprites@a8bc5c504e79f1a4ee436f8a2815673a2caa5c81/char_';
+const SPRITE_CDN   = 'https://cdn.jsdelivr.net/gh/Drak0ri/thestage-sprites@21eee9680bc1b565350fdf65e6dca3ddf06f752c/char_';
 
 // Spritesheet: 576×768px, 9 cols × 12 rows of 64×64 frames
 // 4 directions × 3 animations. Direction order per group: down, left, right, up
