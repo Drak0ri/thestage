@@ -392,7 +392,7 @@ const Chat = {
       'A widget is a full self-contained HTML page with inline CSS+JS. No external dependencies. Dark background (#0a0820 or similar). ' +
       'If someone wants a clock — write a real ticking clock in HTML/JS with setInterval. A timer, calculator, colour picker, dice, game — build the actual thing that works. ' +
       'The HTML goes between [WIDGET:My Title] and [/WIDGET] — this format is safe and handles all HTML characters correctly. ' +
-      'Make widgets compact, beautiful and functional. ' +
+      'Make widgets compact and functional — target under 3000 characters of HTML total. Prioritise working logic over decoration. ' +
       'Update existing artifacts with [UPDATE_ARTIFACT:id|what changed|new full content].';
 
     var system = [
@@ -428,7 +428,7 @@ const Chat = {
         var resp = await fetch('https://script.google.com/macros/s/AKfycbxUtte8plGg9O0pPXeedpm9oKhXBndYHOMYRBWxhbHM26ZChBcbhnzBiv7x_zJPVGRq/exec', {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify({ pin: App.pin, model: 'claude-sonnet-4-6', max_tokens: 1000, system: system, messages: messages })
+          body: JSON.stringify({ pin: App.pin, model: 'claude-sonnet-4-6', max_tokens: 4000, system: system, messages: messages })
         });
         var data = await resp.json();
         rawReply = data.content && data.content[0] ? data.content[0].text : '...';
@@ -991,6 +991,7 @@ const Chat = {
       .replace(/\n/g, '<br>');
   }
 };
+
 
 
 
