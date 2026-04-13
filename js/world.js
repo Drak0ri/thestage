@@ -428,12 +428,18 @@ const World = {
       nameEl.textContent = member.name;
       wrapper.appendChild(nameEl);
 
-      // Hand raise
+      // Hand raise — clickable, animated
       if (isHandRaised) {
         var hand = document.createElement('div');
         hand.className = 'char-hand';
-        hand.style.cssText = 'position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:14px;pointer-events:none;';
+        // CSS handles position/animation; override pointer-events so it's clickable
+        hand.style.pointerEvents = 'all';
         hand.textContent = '✋';
+        hand.title = 'Click to let ' + member.name.split(' ')[0] + ' speak';
+        hand.addEventListener('click', (function(hid) { return function(e) {
+          e.stopPropagation();
+          Chat.speakHandRaised(hid);
+        }; })(member.id));
         wrapper.appendChild(hand);
       }
 
@@ -816,8 +822,13 @@ const World = {
       if (isHandRaised && !existingHand) {
         var hand = document.createElement('div');
         hand.className = 'char-hand';
-        hand.style.cssText = 'position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:14px;pointer-events:none;';
+        hand.style.pointerEvents = 'all';
         hand.textContent = '✋';
+        hand.title = 'Click to let ' + (member ? member.name.split(' ')[0] : '') + ' speak';
+        hand.addEventListener('click', (function(hid) { return function(e) {
+          e.stopPropagation();
+          Chat.speakHandRaised(hid);
+        }; })(id));
         wrapper.appendChild(hand);
       } else if (!isHandRaised && existingHand) {
         existingHand.remove();
