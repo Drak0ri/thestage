@@ -4,13 +4,13 @@
 // Click to read full content. Persists in App.state.artifacts[].
 
 const ARTIFACT_TYPES = {
-  note:     { icon: '📝', color: '#fffacc', border: '#ccaa00', label: 'NOTE',     z: 8 },
-  doc:      { icon: '📄', color: '#ddeeff', border: '#4488cc', label: 'DOC',      z: 8 },
-  plan:     { icon: '🗓', color: '#ccffdd', border: '#22aa66', label: 'PLAN',     z: 8 },
-  code:     { icon: '💾', color: '#eebbff', border: '#7744cc', label: 'CODE',     z: 8 },
-  idea:     { icon: '💡', color: '#ffeeaa', border: '#cc8800', label: 'IDEA',     z: 8 },
-  list:     { icon: '📋', color: '#ffddee', border: '#cc4488', label: 'LIST',     z: 8 },
-  decision: { icon: '⚖️', color: '#cceeff', border: '#2266aa', label: 'DECISION', z: 8 },
+  note:     { icon: '📝', color: '#fffacc', border: '#ccaa00', label: 'NOTE',     z: 30 },
+  doc:      { icon: '📄', color: '#ddeeff', border: '#4488cc', label: 'DOC',      z: 30 },
+  plan:     { icon: '🗓', color: '#ccffdd', border: '#22aa66', label: 'PLAN',     z: 30 },
+  code:     { icon: '💾', color: '#eebbff', border: '#7744cc', label: 'CODE',     z: 30 },
+  idea:     { icon: '💡', color: '#ffeeaa', border: '#cc8800', label: 'IDEA',     z: 30 },
+  list:     { icon: '📋', color: '#ffddee', border: '#cc4488', label: 'LIST',     z: 30 },
+  decision: { icon: '⚖️', color: '#cceeff', border: '#2266aa', label: 'DECISION', z: 30 },
 };
 
 const WorldObjects = {
@@ -287,3 +287,4 @@ const WorldObjects = {
       lines.join('\n');
   },
 };
+
