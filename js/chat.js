@@ -834,6 +834,13 @@ const Chat = {
           .trim();
       }
 
+      // Dedup check — reject if too similar to recent messages
+      if (this._isDuplicate(reply)) {
+        thinking.remove();
+        this._setState('your-turn');
+        return; // silently drop duplicate
+      }
+
       // Add reply to shared transcript
       var replyMsg = { role: 'assistant', content: reply, speakerId: member.id, speakerName: member.name };
       this.sharedHistory.push(replyMsg);
@@ -1427,6 +1434,12 @@ const Chat = {
 
       if (actionMatch) World.playCharAction(memberId, actionMatch[1]);
 
+      // Dedup check
+      if (this._isDuplicate(reply)) {
+        this._autoLifeScheduleOne(memberId);
+        return;
+      }
+
       // Add to shared history
       var replyMsg = { role: 'assistant', content: reply, speakerId: memberId, speakerName: member.name };
       this.sharedHistory.push(replyMsg);
@@ -1495,6 +1508,29 @@ const Chat = {
     } else {
       if (existing) existing.remove();
     }
+  },
+  // ── Deduplication: reject responses too similar to recent messages ─────────
+  _isDuplicate(reply) {
+    var dominated = reply.toLowerCase().replace(/[^a-z0-9 ]/g, '').trim();
+    if (!dominated) return false;
+    var dominated_words = dominated.split(/\s+/);
+    // Check last 5 assistant messages
+    var recent = this.sharedHistory.slice(-10).filter(function(m) { return m.role === 'assistant'; }).slice(-5);
+    for (var i = 0; i < recent.length; i++) {
+      var prev = recent[i].content.toLowerCase().replace(/[^a-z0-9 ]/g, '').trim();
+      if (!prev) continue;
+      // Exact match
+      if (dominated === prev) return true;
+      // High overlap: count shared words
+      var prev_words = prev.split(/\s+/);
+      var shared = 0;
+      for (var j = 0; j < dominated_words.length; j++) {
+        if (prev_words.indexOf(dominated_words[j]) !== -1) shared++;
+      }
+      var similarity = shared / Math.max(dominated_words.length, 1);
+      if (similarity > 0.75) return true;
+    }
+    return false;
   },
 
   _esc(t) {
