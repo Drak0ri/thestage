@@ -8,7 +8,11 @@ const Chat = {
   talkingId:     null,   // legacy compat — first of talkingIds
   talkingIds:    [],     // multi-select active speakers
   handRaisedIds: [],
+  handRaisedIntents: {},  // id → string of what they want to say
   sharedHistory: [],
+  _agentRounds: 0,
+  _agentMaxRounds: 3,
+  _agentRunning: false,
   _restored: false,
   _saving: false,       // guard against concurrent cloudSaves
   _savePending: false,
@@ -229,6 +233,7 @@ const Chat = {
     var text = this.inputEl.value.trim();
     if (!text || !this.talkingIds.length) return;
     this.inputEl.value = '';
+    this._agentRounds = 0;  // reset round counter on each user message
 
     this.sharedHistory.push({ role: 'user', content: text, speakerId: null });
 
@@ -240,12 +245,16 @@ const Chat = {
 
     // Get a response from each active speaker in turn
     var activeIds = this.talkingIds.slice();
+    var lastResponderId = null;
     for (var i = 0; i < activeIds.length; i++) {
       var member = App.state.team.find(function(m) { return m.id === activeIds[i]; });
       if (!member) continue;
       await this._getResponse(member, text);
+      lastResponderId = member.id;
       this._maybeRaiseHands(member.id);
     }
+    // Run agent-to-agent conversation
+    await this._runAgentRound(lastResponderId);
     this._debouncedCloudSave();
   },
 
@@ -528,9 +537,139 @@ const Chat = {
       var wantsToTalk = chatty.some(function(word) { return member.personality.indexOf(word) !== -1; });
       if (Math.random() < (wantsToTalk ? 0.4 : 0.2)) {
         self.handRaisedIds.push(id);
+        // Generate a brief intent for what they want to say (async, no await)
+        self._generateHandIntent(member);
         World.refresh();
       }
     });
+  },
+
+  // Generate a short intent for a hand-raising character so clicking their hand is instant
+  async _generateHandIntent(member) {
+    var recentCtx = this.sharedHistory.slice(-6)
+      .filter(function(m) { return m.role === 'user' || m.speakerId === member.id; })
+      .map(function(m) { return (m.role === 'user' ? 'User' : member.name) + ': ' + m.content; })
+      .join('\n');
+    var prompt = 'Based on this conversation, write ONE short sentence (max 20 words) that ' + member.name + ' would say if called on. Personality: ' + member.personality + '. Conversation:\n' + recentCtx + '\nReply with just the sentence, nothing else.';
+    try {
+      var resp, text;
+      if (App.localMode || App.useLocal) {
+        resp = await fetch('http://localhost:11434/api/chat', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ model: App.localModel, messages: [{role:'user', content: prompt}], stream: false, think: false })
+        });
+        var d = await resp.json();
+        text = d.message ? d.message.content : '';
+      } else {
+        resp = await fetch('https://script.google.com/macros/s/AKfycbxUtte8plGg9O0pPXeedpm9oKhXBndYHOMYRBWxhbHM26ZChBcbhnzBiv7x_zJPVGRq/exec', {
+          method: 'POST', headers: {'Content-Type':'text/plain'},
+          body: JSON.stringify({ pin: App.pin, model: 'claude-sonnet-4-6', max_tokens: 60, system: 'Reply with a single short sentence only.', messages: [{role:'user', content: prompt}] })
+        });
+        var d = await resp.json();
+        text = d.content && d.content[0] ? d.content[0].text : '';
+      }
+      if (text) this.handRaisedIntents[member.id] = text.trim().replace(/^["']|["']$/g, '');
+    } catch(e) { /* intent stays blank, full response will be generated on click */ }
+  },
+
+  // Called when user clicks the hand emoji over a character
+  async speakHandRaised(id) {
+    var member = App.state.team.find(function(m) { return m.id === id; });
+    if (!member) return;
+    // Remove hand
+    this.handRaisedIds = this.handRaisedIds.filter(function(x) { return x !== id; });
+    var intent = this.handRaisedIntents[id] || null;
+    delete this.handRaisedIntents[id];
+    World.refresh();
+    // If we have a pre-generated intent, post it as their message directly
+    if (intent) {
+      this.sharedHistory.push({ role: 'assistant', content: intent, speakerId: id });
+      var div = document.createElement('div');
+      div.className = 'msg ai';
+      var speakerEl = document.createElement('div');
+      speakerEl.className = 'speaker';
+      speakerEl.textContent = member.name.toUpperCase();
+      div.appendChild(speakerEl);
+      var bodyEl = document.createElement('span');
+      bodyEl.innerHTML = Chat._esc(intent);
+      div.appendChild(bodyEl);
+      this.messagesEl.appendChild(div);
+      this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
+      Chat._appendToHistory(id, { role: 'assistant', content: intent, speakerId: id });
+      // Let this kick off another round of agent chat
+      this._maybeRaiseHands(id);
+      this._debouncedCloudSave();
+      // Run agent conversation from this response
+      await this._runAgentRound(id);
+    } else {
+      // No intent yet — do a full response
+      await this._getResponse(member, '');
+      this._maybeRaiseHands(id);
+      await this._runAgentRound(id);
+      this._debouncedCloudSave();
+    }
+  },
+
+  // Run agent-to-agent conversation for up to _agentMaxRounds rounds
+  async _runAgentRound(lastResponderId) {
+    if (this._agentRunning) return;
+    // Find a character with a raised hand to respond
+    var candidates = this.handRaisedIds.filter(function(id) { return id !== lastResponderId && Chat.forwardIds.indexOf(id) !== -1; });
+    if (!candidates.length) return;
+    this._agentRunning = true;
+    try {
+      while (candidates.length && this._agentRounds < this._agentMaxRounds) {
+        var respondId = candidates[0];
+        this.handRaisedIds = this.handRaisedIds.filter(function(x) { return x !== respondId; });
+        delete this.handRaisedIntents[respondId];
+        World.refresh();
+        var respondMember = App.state.team.find(function(m) { return m.id === respondId; });
+        if (respondMember) {
+          await this._getResponse(respondMember, '');
+          this._agentRounds++;
+          this._maybeRaiseHands(respondId);
+          // Refresh candidates
+          candidates = this.handRaisedIds.filter(function(id) { return id !== respondId && Chat.forwardIds.indexOf(id) !== -1; });
+        } else {
+          break;
+        }
+      }
+      if (this._agentRounds >= this._agentMaxRounds && this.handRaisedIds.length > 0) {
+        this._showContinuePrompt();
+      }
+    } finally {
+      this._agentRunning = false;
+    }
+  },
+
+  _showContinuePrompt() {
+    var names = this.handRaisedIds.map(function(id) {
+      var m = App.state.team.find(function(t) { return t.id === id; });
+      return m ? m.name.split(' ')[0] : '?';
+    }).join(', ');
+    var div = document.createElement('div');
+    div.className = 'msg continue-prompt';
+    div.innerHTML = names + ' still want' + (this.handRaisedIds.length === 1 ? 's' : '') + ' to chime in.<br>';
+    var yesBtn = document.createElement('button');
+    yesBtn.textContent = 'CONTINUE (' + this._agentMaxRounds + ' more)';
+    yesBtn.addEventListener('click', function() {
+      div.remove();
+      Chat._agentRounds = 0;
+      var lastId = Chat.handRaisedIds[0];
+      Chat._runAgentRound(null);
+    });
+    var noBtn = document.createElement('button');
+    noBtn.textContent = 'STOP';
+    noBtn.addEventListener('click', function() {
+      div.remove();
+      Chat.handRaisedIds = [];
+      Chat.handRaisedIntents = {};
+      World.refresh();
+    });
+    div.appendChild(yesBtn);
+    div.appendChild(noBtn);
+    this.messagesEl.appendChild(div);
+    this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
   },
 
   dismissAll() {
@@ -539,6 +678,9 @@ const Chat = {
     this.talkingId     = null;
     this.talkingIds    = [];
     this.handRaisedIds = [];
+    this.handRaisedIntents = {};
+    this._agentRounds = 0;
+    this._agentRunning = false;
     this.sharedHistory = [];
     this._restored     = false;
     this.panel.classList.remove('open');
@@ -685,3 +827,5 @@ const Chat = {
       .replace(/\n/g,'<br>');
   }
 };
+
+
