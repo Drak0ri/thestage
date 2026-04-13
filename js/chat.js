@@ -94,6 +94,7 @@ const Chat = {
     this._rebuildSharedHistoryFromSaved(validIds);
     this.panel.classList.add('open');
     this.renderPanel();
+    if ((App.localMode || App.useLocal) && this.forwardIds.length >= 2) this.autoLifeStart();
   },
 
   // Rebuild sharedHistory from persisted per-character data on load
@@ -120,9 +121,12 @@ const Chat = {
     this.panel.classList.add('open');
     this.renderPanel();
     this.inputEl.focus();
+    // Start auto-life if local mode with 2+ characters
+    if ((App.localMode || App.useLocal) && this.forwardIds.length >= 2) this.autoLifeStart();
   },
 
   closePanel() {
+    this.autoLifeStop();
     this.panel.classList.remove('open');
     App.setStatus(this.forwardIds.length
       ? 'click a character to chat'
@@ -903,6 +907,7 @@ const Chat = {
   },
 
   dismissAll() {
+    this.autoLifeStop();
     this.forwardIds        = [];
     this.talkingId         = null;
     this.talkingIds        = [];
@@ -1034,6 +1039,235 @@ const Chat = {
   close() { this.dismissAll(); },
   get currentId()  { return this.talkingId; },
   set currentId(v) { this.talkingId = v; },
+
+
+
+  // ══════════════════════════════════════════════════════════════════════════════
+  // AUTO-LIFE: Characters talk to each other on their own (LOCAL OLLAMA ONLY)
+  // ══════════════════════════════════════════════════════════════════════════════
+  _autoLifeTimers: {},   // { memberId: timeoutHandle }
+  _autoLifeActive: false,
+  _autoLifePaused: false,
+
+  autoLifeStart() {
+    if (!App.localMode && !App.useLocal) return;  // cloud only — never auto-life
+    if (this._autoLifeActive) return;
+    if (this.forwardIds.length < 2) return;  // need at least 2 characters
+    this._autoLifeActive = true;
+    this._autoLifePaused = false;
+    this._autoLifeScheduleAll();
+    this._updateAutoLifeIndicator();
+  },
+
+  autoLifeStop() {
+    this._autoLifeActive = false;
+    this._autoLifePaused = false;
+    var self = this;
+    Object.keys(this._autoLifeTimers).forEach(function(id) {
+      clearTimeout(self._autoLifeTimers[id]);
+    });
+    this._autoLifeTimers = {};
+    this._updateAutoLifeIndicator();
+  },
+
+  autoLifeTogglePause() {
+    if (!this._autoLifeActive) return;
+    if (this._autoLifePaused) {
+      this._autoLifePaused = false;
+      this._autoLifeScheduleAll();
+    } else {
+      this._autoLifePaused = true;
+      var self = this;
+      Object.keys(this._autoLifeTimers).forEach(function(id) {
+        clearTimeout(self._autoLifeTimers[id]);
+      });
+      this._autoLifeTimers = {};
+    }
+    this._updateAutoLifeIndicator();
+  },
+
+  _autoLifeScheduleAll() {
+    if (!this._autoLifeActive || this._autoLifePaused) return;
+    var self = this;
+    this.forwardIds.forEach(function(id) {
+      if (!self._autoLifeTimers[id]) {
+        self._autoLifeScheduleOne(id);
+      }
+    });
+  },
+
+  _autoLifeScheduleOne(memberId) {
+    if (!this._autoLifeActive || this._autoLifePaused) return;
+    if (this.forwardIds.indexOf(memberId) === -1) return;
+    var self = this;
+    // Random delay: 30 seconds to 20 minutes
+    var minDelay = 30 * 1000;
+    var maxDelay = 20 * 60 * 1000;
+    var member = App.state.team.find(function(m) { return m.id === memberId; });
+    // Chatty personalities skew shorter
+    var chatty = ['enthusiastic', 'creative', 'chaotically', 'big-picture'];
+    var isChatty = member && chatty.some(function(w) { return member.personality.indexOf(w) !== -1; });
+    if (isChatty) maxDelay = 12 * 60 * 1000;  // chatty: up to 12 min
+    var delay = minDelay + Math.random() * (maxDelay - minDelay);
+    this._autoLifeTimers[memberId] = setTimeout(function() {
+      delete self._autoLifeTimers[memberId];
+      self._autoLifeTick(memberId);
+    }, delay);
+  },
+
+  async _autoLifeTick(memberId) {
+    if (!this._autoLifeActive || this._autoLifePaused) return;
+    if (this.forwardIds.indexOf(memberId) === -1) return;
+    if (!(App.localMode || App.useLocal)) { this.autoLifeStop(); return; }
+
+    var member = App.state.team.find(function(m) { return m.id === memberId; });
+    if (!member) return;
+
+    // Build context of recent conversation
+    var recentCtx = this.sharedHistory.slice(-10).map(function(m) {
+      if (m.role === 'user') return 'Baz: ' + m.content;
+      if (m.role === 'assistant') return (m.speakerName || '?') + ': ' + m.content;
+      if (m.role === 'system') return '(' + m.content + ')';
+      return '';
+    }).filter(Boolean).join('\n');
+
+    var othersHere = this.forwardIds
+      .filter(function(id) { return id !== memberId; })
+      .map(function(id) { var m = App.state.team.find(function(t) { return t.id === id; }); return m ? m.name : ''; })
+      .filter(Boolean).join(', ');
+
+    var roomCtx = (typeof ROOMS !== 'undefined' && ROOMS[World.currentRoom])
+      ? ROOMS[World.currentRoom].aiContext : '';
+
+    var briefingCtx = (App.state.briefing && App.state.briefing.trim())
+      ? 'PROJECT CONTEXT: ' + App.state.briefing : '';
+
+    var actionList = (typeof ACTIONS !== 'undefined') ? ACTIONS.join(', ') : '';
+
+    var system = [
+      'You are ' + member.name + ', a team member. Role: ' + (member.role || 'team member') + '.',
+      'Personality: ' + member.personality + '.',
+      roomCtx,
+      briefingCtx,
+      'You are hanging out in a shared space with: ' + othersHere + '.',
+      'You are NOT obligated to speak. Long silences are natural and welcome.',
+      'Only speak if you genuinely have something to say — a thought, observation, reaction, question, joke, or reflection.',
+      'If you have nothing to say right now, respond with exactly: [SILENT]',
+      'Do NOT force conversation. Do NOT be performative. Silence is perfectly fine.',
+      actionList ? 'You may include one [ACTION:name] tag at the start — choose from: ' + actionList + '. Or skip it.' : '',
+      'If you speak, keep it natural and short (1-3 sentences). Do not prefix with your name.',
+    ].filter(Boolean).join(' ');
+
+    var messages = [];
+    if (recentCtx) {
+      messages.push({ role: 'user', content: 'Here is what\'s been happening in the room recently:\n' + recentCtx + '\n\nIt\'s been a little while. Do you have anything to say, or are you content with silence?' });
+    } else {
+      messages.push({ role: 'user', content: 'You\'re in a quiet room with ' + othersHere + '. Nothing has been said in a while. Do you want to say something, or enjoy the quiet?' });
+    }
+
+    try {
+      var resp = await fetch('http://localhost:11434/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: App.localModel,
+          messages: [{ role: 'system', content: system }].concat(messages),
+          stream: false, think: false
+        })
+      });
+      var data = await resp.json();
+      var rawReply = data.message ? data.message.content : '[SILENT]';
+
+      // Check for silence
+      if (rawReply.trim() === '[SILENT]' || rawReply.trim().indexOf('[SILENT]') !== -1) {
+        // They chose silence — reschedule
+        this._autoLifeScheduleOne(memberId);
+        return;
+      }
+
+      // Parse action tag
+      var actionMatch = rawReply.match(/\[ACTION:(\w+)\]/);
+      var reply = rawReply
+        .replace(/\[ACTION:\w+\]\s*/g, '')
+        .replace(/\[SILENT\]/g, '')
+        .trim();
+
+      if (!reply) {
+        this._autoLifeScheduleOne(memberId);
+        return;
+      }
+
+      if (actionMatch) World.playCharAction(memberId, actionMatch[1]);
+
+      // Add to shared history
+      var replyMsg = { role: 'assistant', content: reply, speakerId: memberId, speakerName: member.name };
+      this.sharedHistory.push(replyMsg);
+      this._appendToAllForward(replyMsg);
+
+      // Render in chat
+      var div = document.createElement('div');
+      div.className = 'msg ai';
+      var speakerEl = document.createElement('div');
+      speakerEl.className = 'speaker';
+      speakerEl.textContent = member.name.toUpperCase();
+      div.appendChild(speakerEl);
+      var bodyEl = document.createElement('span');
+      bodyEl.innerHTML = Chat._esc(reply);
+      div.appendChild(bodyEl);
+      this.messagesEl.appendChild(div);
+      this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
+
+      this._debouncedCloudSave();
+
+      // After someone speaks, give others a chance to respond sooner
+      // Reset their timers with a shorter window (10s - 5min)
+      var self = this;
+      this.forwardIds.forEach(function(id) {
+        if (id === memberId) return;
+        if (self._autoLifeTimers[id]) clearTimeout(self._autoLifeTimers[id]);
+        delete self._autoLifeTimers[id];
+        var reactDelay = 10000 + Math.random() * (5 * 60 * 1000 - 10000);
+        self._autoLifeTimers[id] = setTimeout(function() {
+          delete self._autoLifeTimers[id];
+          self._autoLifeTick(id);
+        }, reactDelay);
+      });
+
+    } catch(e) {
+      console.warn('Auto-life tick failed for', member.name, e);
+    }
+
+    // Reschedule this character
+    this._autoLifeScheduleOne(memberId);
+  },
+
+  _updateAutoLifeIndicator() {
+    var existing = document.getElementById('autolife-indicator');
+    if (this._autoLifeActive && !this._autoLifePaused) {
+      if (!existing) {
+        var ind = document.createElement('span');
+        ind.id = 'autolife-indicator';
+        ind.style.cssText = 'font-family:"Press Start 2P",monospace;font-size:5px;color:#44cc66;padding:0 6px;cursor:pointer;align-self:center;';
+        ind.title = 'Auto-life ON — characters may talk on their own. Click to pause.';
+        ind.textContent = '\u{1F7E2} LIVING';
+        ind.addEventListener('click', function() { Chat.autoLifeTogglePause(); });
+        var headerRight = document.getElementById('header-right');
+        if (headerRight) headerRight.appendChild(ind);
+      } else {
+        existing.textContent = '\u{1F7E2} LIVING';
+        existing.style.color = '#44cc66';
+        existing.title = 'Auto-life ON — characters may talk on their own. Click to pause.';
+      }
+    } else if (this._autoLifeActive && this._autoLifePaused) {
+      if (existing) {
+        existing.textContent = '\u23F8 PAUSED';
+        existing.style.color = '#aaaa44';
+        existing.title = 'Auto-life paused. Click to resume.';
+      }
+    } else {
+      if (existing) existing.remove();
+    }
+  },
 
   _esc(t) {
     return String(t)
