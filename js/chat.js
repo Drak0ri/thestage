@@ -35,6 +35,11 @@ const Chat = {
     document.getElementById('chat-close').addEventListener('click', function() { Chat.closePanel(); });
     document.getElementById('chat-send').addEventListener('click', function() { Chat.send(); });
     this.inputEl.addEventListener('keydown', function(e) { if (e.key === 'Enter') Chat.send(); });
+    // Expiry check every 5 minutes
+    setInterval(function() {
+      if (typeof WorldObjects !== 'undefined') WorldObjects.checkExpiry();
+      if (typeof Props !== 'undefined') Props.checkExpiry();
+    }, 5 * 60 * 1000);
   },
 
   // ── Conversation state indicator ────────────────────────────────────────────
@@ -383,6 +388,12 @@ const Chat = {
     var summonCtx = 'TEAM ROSTER: ' + teamRoster + '. ' +
       'You can summon someone with [SUMMON:Name], dismiss with [DISMISS:Name], or create a new person with [CREATE:Name|Role]. Use sparingly.';
 
+    var pendingCtx = '';
+    if (App.state._pendingNewMembers && App.state._pendingNewMembers.length) {
+      pendingCtx = 'PENDING NEW MEMBER REQUESTS (Claude must approve/deny): ' + App.state._pendingNewMembers.map(function(p) {
+        return p.name + ' (' + (p.role || 'no role') + ') requested by ' + p.requestedBy + (p.reason ? ' — ' + p.reason : '');
+      }).join('; ');
+    }
     var briefingCtx = (App.state.briefing && App.state.briefing.trim())
       ? 'PROJECT CONTEXT: ' + App.state.briefing : '';
 
@@ -408,12 +419,44 @@ const Chat = {
       roomCtx,
       groupCtx,
       briefingCtx,
+      pendingCtx,
       memoryCtx,
       artifactCtx,
       propCtx,
       summonCtx,
       artifactCreateCtx,
       actionCtx,
+      '--- WORLD RULES (everyone must follow these) ---\n' +
+'CLAUDE is the father figure of this world. His word is final. He approves or denies all major actions.\n' +
+'\n' +
+'THINGS YOU CAN DO:\n' +
+'• CREATE things: [ARTIFACT:type|title|content], [WIDGET:title]...html...[/WIDGET], [PROP:type|name]\n' +
+'• REMOVE your own things only: [REMOVE_ARTIFACT:id] or [REMOVE_PROP:id] — you can only remove items YOU created.\n' +
+'• UPDATE your own files: [UPDATE_FILE:filename|content] — files: soul.md, skills.md, goals.md, relationships.md\n' +
+'  Size limits: soul.md 3000 chars, skills.md 3000 chars, goals.md 3000 chars, relationships.md 3000 chars.\n' +
+'• WRITE to your memory: [WRITE_MEM:st|content] (short-term, 2000 char limit) or [WRITE_MEM:lt|content] (long-term, 4000 char limit)\n' +
+'  Use short-term memory for recent events, tasks, and temporary notes. Use long-term memory for important lessons, relationships, and core knowledge.\n' +
+'  Memory is precious — be concise and selective about what you store.\n' +
+'• SUMMON someone already on the team: [SUMMON:Name]\n' +
+'• REQUEST a new person: [REQUEST_NEW:Name|Role|reason] — Claude must approve. The new person must then write their own soul.md before joining.\n' +
+'\n' +
+'OWNERSHIP & EXPIRY:\n' +
+'• Everything you create (artifacts, props, widgets) has a 3-hour expiry if nobody interacts with it.\n' +
+'• When something is about to expire, you will be told. If you still need it, interact with it or say so within 30 minutes.\n' +
+'• You can only remove YOUR OWN creations. You cannot remove other people\\\'s things.\n' +
+'\n' +
+'ONBOARDING NEW MEMBERS:\n' +
+'• When a new member is requested via [REQUEST_NEW:], Claude reviews and approves/denies with [APPROVE_NEW:Name] or [DENY_NEW:Name|reason].\n' +
+'• Once approved, the new person must research and write their own soul.md (identity, personality, values, style).\n' +
+'• They present it to Claude for final approval before they fully join.\n' +
+'\n' +
+'CLAUDE-ONLY POWERS (only the character named Claude can use these):\n' +
+'• [APPROVE_NEW:Name] — approve a new member request\n' +
+'• [DENY_NEW:Name|reason] — deny a new member request\n' +
+'• [APPROVE_SOUL:Name] — approve a new member\\\'s soul.md\n' +
+'• [REJECT_SOUL:Name|feedback] — reject and give feedback on a soul.md\n' +
+'• Claude keeps order and can override decisions when needed.\n' +
+'--- END WORLD RULES ---',
       'Keep responses SHORT (2-3 sentences unless creating an artifact). Stay in character. Never break character. Do not prefix your reply with your own name.',
     ].filter(Boolean).join(' ');
 
@@ -603,12 +646,191 @@ const Chat = {
             Chat.appendSystem(pDef.emoji + ' ' + member.name + ' placed a ' + pDef.label + ': ' + prop.name);
           }
         }
+        // ── Parse [REMOVE_ARTIFACT:id] — own items only ─────────────────────
+        var removeArtRe = /\[REMOVE_ARTIFACT:([^\]]+)\]/g;
+        var removeArtMatch;
+        while ((removeArtMatch = removeArtRe.exec(rawReply)) !== null) {
+          var rArtId = removeArtMatch[1].trim();
+          if (typeof WorldObjects !== 'undefined') {
+            var removed = WorldObjects.removeByAuthor(rArtId, member.id);
+            if (removed) {
+              var rMsg = { role: 'system', content: '🗑 ' + member.name + ' removed their artifact.', speakerId: null };
+              Chat.sharedHistory.push(rMsg);
+              Chat._appendToAllForward(rMsg);
+              Chat.appendSystem('🗑 ' + member.name + ' removed their artifact.');
+            } else {
+              Chat.appendSystem('⚠️ ' + member.name + ' tried to remove an artifact they don\'t own.');
+            }
+          }
+        }
+
+        // ── Parse [REMOVE_PROP:id] — own items only ──────────────────────────
+        var removePropRe = /\[REMOVE_PROP:([^\]]+)\]/g;
+        var removePropMatch;
+        while ((removePropMatch = removePropRe.exec(rawReply)) !== null) {
+          var rPropId = removePropMatch[1].trim();
+          if (typeof Props !== 'undefined') {
+            var removed = Props.removeByAuthor(rPropId, member.name);
+            if (removed) {
+              var rMsg = { role: 'system', content: '🗑 ' + member.name + ' removed their prop.', speakerId: null };
+              Chat.sharedHistory.push(rMsg);
+              Chat._appendToAllForward(rMsg);
+              Chat.appendSystem('🗑 ' + member.name + ' removed their item.');
+            } else {
+              Chat.appendSystem('⚠️ ' + member.name + ' tried to remove an item they don\'t own.');
+            }
+          }
+        }
+
+        // ── Parse [WRITE_MEM:st|content] and [WRITE_MEM:lt|content] ──────────
+        var writeMemRe = /\[WRITE_MEM:(st|lt)\|([^\]]+)\]/g;
+        var writeMemMatch;
+        while ((writeMemMatch = writeMemRe.exec(rawReply)) !== null) {
+          var memType = writeMemMatch[1]; // 'st' or 'lt'
+          var memContent = writeMemMatch[2].trim();
+          var memFile = memType === 'st' ? 'st_mem.md' : 'lt_mem.md';
+          var memLimit = memType === 'st' ? 2000 : 4000;
+          if (memContent.length > memLimit) {
+            memContent = memContent.substring(0, memLimit);
+            Chat.appendSystem('⚠️ Memory truncated to ' + memLimit + ' chars.');
+          }
+          Chat._writeCharFile(member, memFile, memContent);
+          var memLabel = memType === 'st' ? 'short-term' : 'long-term';
+          var mMsg = { role: 'system', content: '🧠 ' + member.name + ' updated their ' + memLabel + ' memory.', speakerId: null };
+          Chat.sharedHistory.push(mMsg);
+          Chat._appendToAllForward(mMsg);
+          Chat.appendSystem('🧠 ' + member.name + ' updated their ' + memLabel + ' memory.');
+        }
+
+        // ── Parse [UPDATE_FILE:filename|content] — own identity files ────────
+        var updateFileRe = /\[UPDATE_FILE:([^\|]+)\|([^\]]+)\]/g;
+        var updateFileMatch;
+        while ((updateFileMatch = updateFileRe.exec(rawReply)) !== null) {
+          var ufName = updateFileMatch[1].trim();
+          var ufContent = updateFileMatch[2].trim();
+          var allowedFiles = ['soul.md', 'skills.md', 'goals.md', 'relationships.md'];
+          if (allowedFiles.indexOf(ufName) !== -1) {
+            var fileLimit = 3000;
+            if (ufContent.length > fileLimit) {
+              ufContent = ufContent.substring(0, fileLimit);
+              Chat.appendSystem('⚠️ File truncated to ' + fileLimit + ' chars.');
+            }
+            Chat._writeCharFile(member, ufName, ufContent);
+            var fMsg = { role: 'system', content: '📝 ' + member.name + ' updated their ' + ufName, speakerId: null };
+            Chat.sharedHistory.push(fMsg);
+            Chat._appendToAllForward(fMsg);
+            Chat.appendSystem('📝 ' + member.name + ' updated their ' + ufName);
+          } else {
+            Chat.appendSystem('⚠️ ' + member.name + ' tried to update an unrecognised file: ' + ufName);
+          }
+        }
+
+        // ── Parse [REQUEST_NEW:Name|Role|reason] — request new member ────────
+        var requestNewRe = /\[REQUEST_NEW:([^\|]+)\|([^\|]*)\|?([^\]]*)\]/g;
+        var requestNewMatch;
+        while ((requestNewMatch = requestNewRe.exec(rawReply)) !== null) {
+          var reqName = requestNewMatch[1].trim();
+          var reqRole = (requestNewMatch[2] || '').trim();
+          var reqReason = (requestNewMatch[3] || '').trim();
+          var rMsg = { role: 'system', content: '🆕 ' + member.name + ' has requested a new member: ' + reqName + (reqRole ? ' (' + reqRole + ')' : '') + (reqReason ? ' — ' + reqReason : '') + '. Awaiting Claude\'s approval.', speakerId: null };
+          Chat.sharedHistory.push(rMsg);
+          Chat._appendToAllForward(rMsg);
+          Chat.appendSystem('🆕 ' + member.name + ' requested new member: ' + reqName + '. Claude must approve.');
+          // Store pending request
+          if (!App.state._pendingNewMembers) App.state._pendingNewMembers = [];
+          App.state._pendingNewMembers.push({ name: reqName, role: reqRole, reason: reqReason, requestedBy: member.name, at: Date.now() });
+          Storage.cloudSave(App.state);
+        }
+
+        // ── Parse [APPROVE_NEW:Name] — Claude only ──────────────────────────
+        var approveNewRe = /\[APPROVE_NEW:([^\]]+)\]/g;
+        var approveNewMatch;
+        while ((approveNewMatch = approveNewRe.exec(rawReply)) !== null) {
+          if (member.name.toLowerCase() === 'claude') {
+            var appName = approveNewMatch[1].trim();
+            var pending = (App.state._pendingNewMembers || []).find(function(p) { return p.name.toLowerCase() === appName.toLowerCase(); });
+            if (pending) {
+              var newMember = App.createMember(pending.name, pending.role);
+              Chat.forwardIds.push(newMember.id);
+              Chat.talkingIds.push(newMember.id);
+              Chat.talkingId = Chat.talkingIds[0];
+              App.state._pendingNewMembers = App.state._pendingNewMembers.filter(function(p) { return p.name.toLowerCase() !== appName.toLowerCase(); });
+              var aMsg = { role: 'system', content: '✅ Claude approved ' + pending.name + '. They must now write their soul.md to complete onboarding.', speakerId: null };
+              Chat.sharedHistory.push(aMsg);
+              Chat._appendToAllForward(aMsg);
+              Chat.appendSystem('✅ ' + pending.name + ' approved! They need to write their soul.md.');
+              World.render();
+              Chat.renderPanel();
+              Storage.cloudSave(App.state);
+            }
+          } else {
+            Chat.appendSystem('⚠️ Only Claude can approve new members.');
+          }
+        }
+
+        // ── Parse [DENY_NEW:Name|reason] — Claude only ──────────────────────
+        var denyNewRe = /\[DENY_NEW:([^\|]+)\|?([^\]]*)\]/g;
+        var denyNewMatch;
+        while ((denyNewMatch = denyNewRe.exec(rawReply)) !== null) {
+          if (member.name.toLowerCase() === 'claude') {
+            var denyName = denyNewMatch[1].trim();
+            var denyReason = (denyNewMatch[2] || '').trim();
+            App.state._pendingNewMembers = (App.state._pendingNewMembers || []).filter(function(p) { return p.name.toLowerCase() !== denyName.toLowerCase(); });
+            var dMsg = { role: 'system', content: '❌ Claude denied ' + denyName + (denyReason ? ': ' + denyReason : '.'), speakerId: null };
+            Chat.sharedHistory.push(dMsg);
+            Chat._appendToAllForward(dMsg);
+            Chat.appendSystem('❌ Claude denied ' + denyName + (denyReason ? ' — ' + denyReason : ''));
+            Storage.cloudSave(App.state);
+          } else {
+            Chat.appendSystem('⚠️ Only Claude can deny new members.');
+          }
+        }
+
+        // ── Parse [APPROVE_SOUL:Name] / [REJECT_SOUL:Name|feedback] — Claude only
+        var approveSoulRe = /\[APPROVE_SOUL:([^\]]+)\]/g;
+        var approveSoulMatch;
+        while ((approveSoulMatch = approveSoulRe.exec(rawReply)) !== null) {
+          if (member.name.toLowerCase() === 'claude') {
+            var soulName = approveSoulMatch[1].trim();
+            var sMsg = { role: 'system', content: '✅ Claude approved ' + soulName + '\'s soul.md — they are now a full member of The Stage!', speakerId: null };
+            Chat.sharedHistory.push(sMsg);
+            Chat._appendToAllForward(sMsg);
+            Chat.appendSystem('✅ ' + soulName + ' is now fully onboarded!');
+          } else {
+            Chat.appendSystem('⚠️ Only Claude can approve soul files.');
+          }
+        }
+
+        var rejectSoulRe = /\[REJECT_SOUL:([^\|]+)\|?([^\]]*)\]/g;
+        var rejectSoulMatch;
+        while ((rejectSoulMatch = rejectSoulRe.exec(rawReply)) !== null) {
+          if (member.name.toLowerCase() === 'claude') {
+            var rejName = rejectSoulMatch[1].trim();
+            var rejFeedback = (rejectSoulMatch[2] || '').trim();
+            var rMsg = { role: 'system', content: '🔄 Claude asked ' + rejName + ' to revise their soul.md' + (rejFeedback ? ': ' + rejFeedback : '.'), speakerId: null };
+            Chat.sharedHistory.push(rMsg);
+            Chat._appendToAllForward(rMsg);
+            Chat.appendSystem('🔄 ' + rejName + ' needs to revise their soul.md' + (rejFeedback ? ' — ' + rejFeedback : ''));
+          } else {
+            Chat.appendSystem('⚠️ Only Claude can reject soul files.');
+          }
+        }
+
         // Strip all tags from visible reply
         reply = reply
           .replace(/\[PROP:\w+\|?[^\]]*\]\s*/g, '')
           .replace(/\[WIDGET:[^\]]+\][\s\S]*?\[\/WIDGET\]\s*/g, '')
           .replace(/\[ARTIFACT:\w+\|[^|]+\|[^\]]+\]\s*/g, '')
           .replace(/\[UPDATE_ARTIFACT:[^\]]+\]\s*/g, '')
+          .replace(/\[REMOVE_ARTIFACT:[^\]]+\]\s*/g, '')
+          .replace(/\[REMOVE_PROP:[^\]]+\]\s*/g, '')
+          .replace(/\[WRITE_MEM:[^\]]+\]\s*/g, '')
+          .replace(/\[UPDATE_FILE:[^\]]+\]\s*/g, '')
+          .replace(/\[REQUEST_NEW:[^\]]+\]\s*/g, '')
+          .replace(/\[APPROVE_NEW:[^\]]+\]\s*/g, '')
+          .replace(/\[DENY_NEW:[^\]]+\]\s*/g, '')
+          .replace(/\[APPROVE_SOUL:[^\]]+\]\s*/g, '')
+          .replace(/\[REJECT_SOUL:[^\]]+\]\s*/g, '')
           .trim();
       }
 
@@ -1139,6 +1361,12 @@ const Chat = {
     var roomCtx = (typeof ROOMS !== 'undefined' && ROOMS[World.currentRoom])
       ? ROOMS[World.currentRoom].aiContext : '';
 
+    var pendingCtx = '';
+    if (App.state._pendingNewMembers && App.state._pendingNewMembers.length) {
+      pendingCtx = 'PENDING NEW MEMBER REQUESTS (Claude must approve/deny): ' + App.state._pendingNewMembers.map(function(p) {
+        return p.name + ' (' + (p.role || 'no role') + ') requested by ' + p.requestedBy + (p.reason ? ' — ' + p.reason : '');
+      }).join('; ');
+    }
     var briefingCtx = (App.state.briefing && App.state.briefing.trim())
       ? 'PROJECT CONTEXT: ' + App.state.briefing : '';
 
