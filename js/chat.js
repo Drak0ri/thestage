@@ -383,7 +383,16 @@ const Chat = {
       ? 'PROJECT CONTEXT: ' + App.state.briefing : '';
 
     var artifactCtx = (typeof WorldObjects !== 'undefined') ? WorldObjects.getContextString(World.currentRoom) : '';
-    var artifactCreateCtx = 'You can create a persistent artifact visible to everyone in the room by including [ARTIFACT:type|title|content] — types: note, doc, plan, code, idea, list, decision. Use this when you produce something worth keeping — a plan, a decision, code, a list. You can update an existing artifact with [UPDATE_ARTIFACT:id|update note|new full content]. Do not create artifacts for casual replies — only for substantive outputs worth preserving.';
+    var artifactCreateCtx = 'You can create persistent artifacts visible to everyone using [ARTIFACT:type|title|content]. ' +
+      'Types: note, doc, plan, code, idea, list, decision. ' +
+      'IMPORTANT: You can also create REAL WORKING THINGS using type "widget". ' +
+      'A widget is a complete self-contained HTML page (with inline CSS and JS, no external dependencies) that actually runs in the world. ' +
+      'If someone wants a clock — build a real working clock in HTML. A timer — build a real timer. A calculator, a counter, a game, a visualization — build the actual thing. ' +
+      'The widget content must be a full HTML document: <!DOCTYPE html><html>...<style>...</style>...<script>...</script></html>. ' +
+      'Keep it compact. Use dark backgrounds. Make it visually clear and functional. ' +
+      'Use [ARTIFACT:widget|Clock|<!DOCTYPE html>...full html here...] — the entire HTML goes in the content field. ' +
+      'Use widgets for anything interactive or visual. Use text types for documents and notes. ' +
+      'You can update any artifact with [UPDATE_ARTIFACT:id|what changed|new full content].';
 
     var system = [
       'You are ' + member.name + ', a team member. Role: ' + (member.role || 'team member') + '.',
@@ -969,4 +978,5 @@ const Chat = {
       .replace(/\n/g, '<br>');
   }
 };
+
 
