@@ -210,7 +210,7 @@ const World = {
       if (t === World.container || t.id === 'bg-canvas' ||
           t.classList.contains('floor-tile') || t.id === 'stars-layer' ||
           t.id === 'world-hud' || t.id === 'status-bar' ||
-          t.id === 'objects-canvas' || t.id === 'chars-layer') {
+          t.id === 'objects-layer' || t.id === 'chars-layer') {
         Chat.closePanel();
       }
     });
@@ -350,6 +350,8 @@ const World = {
     Object.values(this.renderers).forEach(function(r){ r.destroy(); });
     this.renderers = {};
     this.charsLayer.innerHTML = '';
+    // Refresh artifacts layer
+    if (typeof WorldObjects !== 'undefined') WorldObjects.render();
 
     var team = App.state.team;
     if (!team.length) return;
@@ -837,3 +839,4 @@ const World = {
     if (typeof Roster !== 'undefined') Roster.render();
   }
 };
+
