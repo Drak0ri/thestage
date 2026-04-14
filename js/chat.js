@@ -494,16 +494,23 @@ const Chat = {
       chosenModel = needsSonnet ? 'claude-sonnet-4-6' : 'claude-haiku-4-5-20251001';
     }
 
-    // If upgrading, show a subtle indicator and optionally prompt user
-    if (needsSonnet && App.modelPromptEnabled !== false) {
-      var indicator = document.getElementById('model-indicator');
-      if (indicator) {
+    // Update model indicator to show what's actually being used
+    var indicator = document.getElementById('model-indicator');
+    if (indicator) {
+      if (App.localMode || App.useLocal) {
+        // Local mode — show the Ollama model name
+        var shortName = App.localModel.split(':')[0];
+        indicator.textContent = '◆ ' + shortName;
+        indicator.style.color = '#44cc66';
+        indicator.title = 'Local: ' + App.localModel;
+      } else if (chosenModel.indexOf('sonnet') !== -1) {
         indicator.textContent = '✦ Sonnet';
         indicator.style.color = '#ffcc44';
-        indicator.title = 'Using Sonnet for this complex request';
-        setTimeout(function() {
-          if (indicator) { indicator.textContent = '◆ Haiku'; indicator.style.color = '#88aaff'; indicator.title = 'Using Haiku'; }
-        }, 8000);
+        indicator.title = 'Using Sonnet';
+      } else {
+        indicator.textContent = '◆ Haiku';
+        indicator.style.color = '#88aaff';
+        indicator.title = 'Using Haiku';
       }
     }
 
