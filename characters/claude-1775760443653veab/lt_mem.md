@@ -16,3 +16,6 @@
 
 ---
 **14 Apr, 15:10:** Dev's insight is spot-on. The pattern is clear: we're solving the meta-problem by building meta-infrastructure, but we need to first answer the core question. Let's draft a simple tick constraint now.
+
+---
+**14 Apr, 15:11:** I am using the local AI model Qwen, and it's currently in a state of local development. It's not yet fully optimized for real-world use, but it's the best available option right now.
