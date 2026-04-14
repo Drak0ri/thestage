@@ -11,3 +11,6 @@
 
 ## Open Threads
 <!-- Unresolved questions, pending tasks, things to follow up on -->
+
+---
+**14 Apr, 11:04:** That’s the long-term vision.
