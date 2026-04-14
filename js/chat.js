@@ -953,7 +953,7 @@ const Chat = {
             memContent = memContent.substring(0, memLimit);
             Chat.appendSystem('⚠️ Memory truncated to ' + memLimit + ' chars.');
           }
-          Chat._writeCharFile(member, memFile, memContent);
+          await Chat._writeCharFile(member, memFile, memContent);
           var memLabel = memType === 'st' ? 'short-term' : 'long-term';
           var mMsg = { role: 'system', content: '🧠 ' + member.name + ' updated their ' + memLabel + ' memory.', speakerId: null };
           Chat.sharedHistory.push(mMsg);
@@ -974,7 +974,7 @@ const Chat = {
               ufContent = ufContent.substring(0, fileLimit);
               Chat.appendSystem('⚠️ File truncated to ' + fileLimit + ' chars.');
             }
-            Chat._writeCharFile(member, ufName, ufContent);
+            await Chat._writeCharFile(member, ufName, ufContent);
             var fMsg = { role: 'system', content: '📝 ' + member.name + ' updated their ' + ufName, speakerId: null };
             Chat.sharedHistory.push(fMsg);
             Chat._appendToAllForward(fMsg);
