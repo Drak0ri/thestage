@@ -1215,17 +1215,42 @@ const Chat = {
         if (pin) sessionStorage.setItem('stage_pin', pin);
         else { Chat.appendSystem('⚠️ Write skipped — no PIN provided.'); return; }
       }
-      var writePayload = { action: 'writeFile', pin: pin, path: path, content: content };
-      console.log('[STAGE DEBUG] writeFile request:', { pin: '***', path: path, contentLen: content.length });
+      // For memory files, append to existing content instead of overwriting
+      var isMemFile = (filename === 'st_mem.md' || filename === 'lt_mem.md');
+      var finalContent = content;
+      if (isMemFile) {
+        // Try to get existing content from cache or fetch it
+        var existing = '';
+        var cached = this._charFileCache[member.id + ':' + filename];
+        if (cached && cached.content) {
+          existing = cached.content;
+        } else {
+          try {
+            var fetchUrl = 'https://raw.githubusercontent.com/Drak0ri/thestage/main/' + path;
+            var existResp = await fetch(fetchUrl);
+            if (existResp.ok) existing = await existResp.text();
+          } catch(e) { /* no existing file, start fresh */ }
+        }
+        if (existing && existing.trim()) {
+          // Append new entry with timestamp
+          var now = new Date().toLocaleString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+          finalContent = existing.trimEnd() + '
+
+---
+**' + now + ':** ' + content;
+        }
+      }
+      var writePayload = { action: 'writeFile', pin: pin, path: path, content: finalContent };
+      console.log('[STAGE DEBUG] writeFile request:', { pin: '***', path: path, contentLen: finalContent.length, appended: isMemFile });
       var resp = await fetch(relayUrl, {
         method: 'POST', headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify(writePayload)
       });
       var result = await resp.json();
       if (result && result.ok) {
-        this._charFileCache[member.id + ':' + filename] = { content: content, ts: Date.now() };
+        this._charFileCache[member.id + ':' + filename] = { content: finalContent, ts: Date.now() };
         Chat.appendSystem('✅ ' + member.name + ' wrote to ' + filename + ' successfully.');
-        console.log('[STAGE DEBUG] writeFile OK:', path, 'content length:', content.length);
+        console.log('[STAGE DEBUG] writeFile OK:', path, 'content length:', finalContent.length);
       } else {
         Chat.appendSystem('❌ ' + member.name + ' failed to write ' + filename + ': ' + JSON.stringify(result));
         console.warn('writeFile relay returned:', result);
