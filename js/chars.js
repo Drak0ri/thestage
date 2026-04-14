@@ -109,59 +109,60 @@ function p(ctx, x, y, w, h, color) {
   ctx.fillRect(x|0, y|0, w|0, h|0);
 }
 
-// ── Hair bitmaps (drawn with H = hair color pixel) ───────────────────────────
+// ── Hair bitmaps — exactly 18px wide to match head ───────────────────────────
+// H = hair pixel, space = transparent
 var HAIR_BITMAPS = {
   messy: [
-    ' HH HHH H  ',
-    'HHHHHHHHHH ',
-    'HHHHHHHHHH ',
-    'HH        H',
+    ' HH HHH H H  H   ',
+    'HHHHHHHHHHHHHHHHHH',
+    'HHHHHHHHHHHHHHHHHH',
+    'HH              HH',
   ],
   slick: [
-    '  HHHHHHHH ',
-    ' HHHHHHHHHH',
-    'HHHHHHHHHHH',
-    'HH         ',
+    '    HHHHHHHHHH    ',
+    '  HHHHHHHHHHHHHH  ',
+    ' HHHHHHHHHHHHHHHH ',
+    'HH              HH',
   ],
   short: [
-    ' HHHHHHHH  ',
-    'HHHHHHHHHH ',
-    'HHHHHHHHH  ',
-    'HH         ',
+    '   HHHHHHHHHH     ',
+    '  HHHHHHHHHHHH    ',
+    ' HHHHHHHHHHHHH    ',
+    'HH                ',
   ],
   medium: [
-    ' HHHHHHHHHH',
-    'HHHHHHHHHHH',
-    'HHHHHHHHHH ',
-    'HH        H',
+    '  HHHHHHHHHHHHHH  ',
+    ' HHHHHHHHHHHHHHHH ',
+    'HHHHHHHHHHHHHHHHHH',
+    'HH              HH',
   ],
   wavy: [
-    'HH HHH HH H',
-    'HHHHHHHHHH ',
-    'HHHHHHHHHH ',
-    'HH        H',
+    'HHH HHH HHH HHH HH',
+    'HHHHHHHHHHHHHHHHHH',
+    'HHHHHHHHHHHHHHHHHH',
+    'HH              HH',
   ],
   long: [
-    ' HHHHHHHHHH',
-    'HHHHHHHHHH ',
-    'HHHHHHHHHH ',
-    'HH        H',
-    'HH        H',
+    '  HHHHHHHHHHHHHH  ',
+    ' HHHHHHHHHHHHHHHH ',
+    'HHHHHHHHHHHHHHHHHH',
+    'HH              HH',
+    'HH              HH',
   ],
   bun: [
-    '   HHHHH   ',
-    '  HHHHHHH  ',
-    ' HHHHHHHHH ',
-    'HHHHHHHHHH ',
-    'HH         ',
+    '      HHHHHH      ',
+    '    HHHHHHHHHH    ',
+    '  HHHHHHHHHHHHHH  ',
+    ' HHHHHHHHHHHHHHHH ',
+    'HH              HH',
   ],
   buzz: [
-    ' HHHHHHHH  ',
-    'HHHHHHHHHH ',
-    'HH         ',
+    '  HHHHHHHHHHHHHH  ',
+    ' HHHHHHHHHHHHHHHH ',
+    'HH              HH',
   ],
   none: [
-    'HH         ',
+    'HH              HH',
   ],
 };
 
@@ -316,23 +317,20 @@ function _drawHuman(ctx, W, H, pose, pal, roleType) {
 
 function _drawHairPixel(ctx, hx, hy, hw, hairColor, style) {
   var bm = HAIR_BITMAPS[style] || HAIR_BITMAPS.medium;
-  var ox = hx - 1;
-  var oy = hy - bm.length + 2;
+  // Last row of bitmap = top of head (hy). Rows above it go negative.
+  var ox = hx;
+  var oy = hy - (bm.length - 1);
   ctx.fillStyle = hairColor;
   for (var row=0; row<bm.length; row++) {
-    for (var col=0; col<bm[row].length; col++) {
-      if (bm[row][col]==='H') ctx.fillRect((ox+col)|0, (oy+row)|0, 1, 1);
+    var line = bm[row];
+    for (var col=0; col<line.length && col<hw; col++) {
+      if (line[col]==='H') ctx.fillRect((ox+col)|0, (oy+row)|0, 1, 1);
     }
-  }
-  // Side hair strips
-  if (style!=='none') {
-    ctx.fillRect(hx|0,      hy|0, 2, 7);
-    ctx.fillRect((hx+hw-2)|0, hy|0, 2, 7);
   }
 }
 
 function _drawFace(ctx, hx, hy, hw, hh, pal, app, roleType, pose) {
-  var talking = (pose===3||pose===4);
+  var talking = (pose===3);
   // Eyebrows
   var brow = (pal.hair==='#ddd'||pal.hair==='#999') ? '#888' : pal.hair;
   p(ctx, hx+2,  hy+4, 5, 1, brow);
@@ -389,16 +387,12 @@ function _drawFace(ctx, hx, hy, hw, hh, pal, app, roleType, pose) {
   var my = hy+14;
   var mx = hx+3;
   if (talking) {
-    // Open mouth
-    p(ctx, mx,   my,   12, 1, '#cc5544'); // upper lip
-    p(ctx, mx-1, my+1, 14, 4, '#1a0808'); // mouth cavity
-    p(ctx, mx,   my+5, 12, 1, '#cc5544'); // lower lip
-    // Teeth top row
-    p(ctx, mx+1, my+1, 3, 2, '#eeeedd');
-    p(ctx, mx+5, my+1, 3, 2, '#eeeedd');
-    p(ctx, mx+9, my+1, 2, 2, '#eeeedd');
-    // Tongue
-    p(ctx, mx+2, my+3, 8, 2, '#dd6677');
+    // Open mouth — tasteful, pixel-art talking expression
+    p(ctx, mx+1, my,   10, 1, '#cc6655'); // upper lip
+    p(ctx, mx,   my+1, 12, 3, '#1a0808'); // mouth opening (dark cavity)
+    p(ctx, mx+1, my+4, 10, 1, '#cc6655'); // lower lip
+    // Single neat tooth row (no gaps = no monster teeth)
+    p(ctx, mx+2, my+1,  8, 1, '#eeeedd');
   } else {
     // Closed smile — pixel curve
     p(ctx, mx,     my+1, 2, 1, '#cc6655'); // left end up
