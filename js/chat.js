@@ -498,23 +498,23 @@ const Chat = {
           'Your identity files are all blank. Let\'s fill them in one by one.\n\n' +
           'First: **soul.md** — this is your core identity. Write about who you are, your personality, your values, and how you communicate. ' +
           'Be creative and make it genuinely yours. Write in first person.\n\n' +
-          'Use [UPDATE_FILE:soul.md|your content here] to save it. Write it now.'
+          'IMPORTANT: You MUST include [UPDATE_FILE:soul.md|your full content here] in your response — that tag is what saves the file. Without it nothing is written. Put ALL the content inside the tag. Do it now.'
       },
       {
         file: 'skills.md',
-        prompt: 'Great, soul.md is done! Now: **skills.md** — what are you good at? What are your primary skills for your role as ' + (member.role || 'team member') + '? ' +
-          'Any secondary skills or tools you prefer?\n\nUse [UPDATE_FILE:skills.md|your content here] to save it. Write it now.'
+        prompt: 'Next: **skills.md** — what are you good at? What are your primary skills for your role as ' + (member.role || 'team member') + '? ' +
+          'Any secondary skills or tools you prefer?\n\nYou MUST include [UPDATE_FILE:skills.md|your full content] in your response to save it. Do it now.'
       },
       {
         file: 'goals.md',
-        prompt: 'Skills saved! Next: **goals.md** — what are you currently working toward? What do you want to achieve on this team?\n\n' +
-          'Use [UPDATE_FILE:goals.md|your content here] to save it. Write it now.'
+        prompt: 'Next: **goals.md** — what are you currently working toward? What do you want to achieve on this team?\n\n' +
+          'You MUST include [UPDATE_FILE:goals.md|your full content] in your response to save it. Do it now.'
       },
       {
         file: 'relationships.md',
-        prompt: 'Almost done! Last one: **relationships.md** — how do you relate to the other team members? ' +
+        prompt: 'Last one: **relationships.md** — how do you relate to the other team members? ' +
           'The team is: ' + App.state.team.map(function(m) { return m.name + ' (' + (m.role || 'team member') + ')'; }).join(', ') + '.\n\n' +
-          'Write your initial impressions or how you\'d like to work with them. Use [UPDATE_FILE:relationships.md|your content here] to save it. Write it now.'
+          'Write your initial impressions. You MUST include [UPDATE_FILE:relationships.md|your full content] in your response to save it. Do it now.'
       }
     ];
 
@@ -673,7 +673,12 @@ const Chat = {
 '• Claude keeps order and can override decisions when needed.\n' +
 '--- END WORLD RULES ---',
       'Keep responses SHORT (2-3 sentences unless creating an artifact). Stay in character. Never break character. Do not prefix your reply with your own name.',
-      'CRITICAL — MEMORY WRITES: When asked to remember, note, or write something to memory, you MUST include the literal tag [WRITE_MEM:st|your content here] or [WRITE_MEM:lt|your content here] in your response. Do NOT just say you wrote it — the tag is what actually saves it. Without the tag, nothing is saved. Example: if asked "remember that the meeting is Tuesday", your response must contain [WRITE_MEM:st|Meeting is on Tuesday] somewhere in it.',
+      'CRITICAL — FILE WRITES: To save ANYTHING you MUST include the literal tag in your response. The tag IS the save mechanism — without it, nothing is written. ' +
+      'For memory: [WRITE_MEM:st|content] or [WRITE_MEM:lt|content]. ' +
+      'For identity files: [UPDATE_FILE:filename|content] where filename is soul.md, skills.md, goals.md, or relationships.md. ' +
+      'Do NOT just describe what you would write — include the actual tag with the actual content. ' +
+      'Example: [UPDATE_FILE:soul.md|I am Claude, the manager of this team. I value clarity and fairness...] ' +
+      'The content goes INSIDE the tag brackets. If you do not include the tag, nothing is saved.',
     ].filter(Boolean).join(' ');
 
     // ── Smart model selection ─────────────────────────────────────────────────
@@ -685,7 +690,7 @@ const Chat = {
     var SONNET_TRIGGERS = ['widget', 'build', 'create a', 'make a', 'code', 'simulate', 'experiment',
       'visuali', 'diagram', 'calculat', 'algorithm', 'teach me', 'explain how', 'step by step',
       'function', 'script', 'program', 'html', 'javascript', 'css', 'game', 'animation', 'chart',
-      'remember', 'memory', 'write_mem', 'note down', 'save this', 'dont forget', 'store'];
+      'remember', 'memory', 'write_mem', 'note down', 'save this', 'dont forget', 'store', 'onboarding', 'update_file'];
     var needsSonnet = SONNET_TRIGGERS.some(function(t) { return lastUserMsg.indexOf(t) !== -1; });
 
     // Respect manual override from App._modelMode
@@ -908,6 +913,7 @@ const Chat = {
 
         // ── Parse [WRITE_MEM:st|content] and [WRITE_MEM:lt|content] ──────────
         console.log('[STAGE DEBUG] rawReply tags check:', rawReply.match(/\[WRITE_MEM[^\]]*\]/g) || 'NO WRITE_MEM TAGS FOUND');
+        console.log('[STAGE DEBUG] UPDATE_FILE tags:', rawReply.match(/\[UPDATE_FILE:[^\]]*\]/g) || 'NO UPDATE_FILE TAGS FOUND');
         var writeMemRe = /\[WRITE_MEM:(st|lt)\|([^\]]+)\]/g;
         var writeMemMatch;
         while ((writeMemMatch = writeMemRe.exec(rawReply)) !== null) {
