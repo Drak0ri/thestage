@@ -1,3 +1,7 @@
-# Maya — Goals
+# Maya — Goals & Tasks
 
-<!-- Current objectives -->
+## Active Goals
+<!-- Current objectives they're working toward -->
+
+## Completed
+<!-- Recently achieved goals -->
