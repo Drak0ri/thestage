@@ -1197,11 +1197,17 @@ const Chat = {
     var slug = member.name.toLowerCase() + '-' + member.id;
     var path = 'characters/' + slug + '/' + filename;
     try {
-      await fetch(RELAY_URL, {
+      var relayUrl = (typeof RELAY_URL !== 'undefined') ? RELAY_URL : 'https://script.google.com/macros/s/AKfycbxUtte8plGg9O0pPXeedpm9oKhXBndYHOMYRBWxhbHM26ZChBcbhnzBiv7x_zJPVGRq/exec';
+      var resp = await fetch(relayUrl, {
         method: 'POST', headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({ action: 'writeFile', pin: App.pin, path: path, content: content })
       });
-      this._charFileCache[member.id + ':' + filename] = { content: content, ts: Date.now() };
+      var result = await resp.json();
+      if (result && result.ok) {
+        this._charFileCache[member.id + ':' + filename] = { content: content, ts: Date.now() };
+      } else {
+        console.warn('writeFile relay returned:', result);
+      }
     } catch(e) { console.warn('Failed to write ' + filename + ' for ' + member.name, e); }
   },
 
@@ -1289,6 +1295,8 @@ const Chat = {
   _autoLifeActive: false,
   _autoLifePaused: false,
   _autoLifeEpoch: 0,     // incremented on pause/stop to invalidate in-flight ticks
+  _autoLifeLastSpoke: {}, // { memberId: timestamp }
+  _autoLifeSpeakChance: 0.15, // 15% chance per tick to even consider speaking
   _autoLifeLastSpoke: {}, // { memberId: timestamp } — cooldown tracking
   _autoLifeSpeakChance: 0.18, // 18% chance per tick to even consider speaking
   _autoLifeCooldown: 10 * 60 * 1000, // 10 min cooldown after speaking
@@ -1370,6 +1378,19 @@ const Chat = {
     var member = App.state.team.find(function(m) { return m.id === memberId; });
     if (!member) return;
 
+    // Per-character cooldown: 10 min after last speaking
+    var lastSpoke = this._autoLifeLastSpoke[memberId] || 0;
+    if (Date.now() - lastSpoke < 10 * 60 * 1000) {
+      this._autoLifeScheduleOne(memberId);
+      return;
+    }
+
+    // Coin flip: only 15% chance to even consider speaking
+    if (Math.random() > this._autoLifeSpeakChance) {
+      this._autoLifeScheduleOne(memberId);
+      return;
+    }
+
     // Build context of recent conversation
     var recentCtx = this.sharedHistory.slice(-10).map(function(m) {
       if (m.role === 'user') return 'Baz: ' + m.content;
@@ -1402,13 +1423,14 @@ const Chat = {
       'Personality: ' + member.personality + '.',
       roomCtx,
       briefingCtx,
-      'You are hanging out in a shared space with: ' + othersHere + '.',
-      'You are NOT obligated to speak. Long silences are natural and welcome.',
-      'Only speak if you genuinely have something to say — a thought, observation, reaction, question, joke, or reflection.',
-      'If you have nothing to say right now, respond with exactly: [SILENT]',
-      'Do NOT force conversation. Do NOT be performative. Silence is perfectly fine.',
-      actionList ? 'You may include one [ACTION:name] tag at the start — choose from: ' + actionList + '. Or skip it.' : '',
-      'If you speak, keep it natural and short (1-3 sentences). Do not prefix with your name.',
+      'You are in a shared space with: ' + othersHere + '.',
+      'SILENCE IS YOUR DEFAULT. Say [SILENT] at least 80% of the time.',
+      'ONLY speak if your message fits one of these: react to something SPECIFIC someone said, share a concrete idea or joke, ask a specific question about a project, comment on a specific object in the room, or make a practical suggestion.',
+      'NEVER do these (will be rejected): existential questioning, meta-commentary about being AI or in a simulation, vague philosophy about presence or consciousness, repeating what someone said, performative enthusiasm, commenting on the act of speaking or silence, checking in without reason.',
+      'If nothing SPECIFIC to say, respond: [SILENT]',
+      'When you DO speak: 1-2 sentences max, concrete, natural.',
+      actionList ? 'You may include one [ACTION:name] tag from: ' + actionList + '.' : '',
+      'Do not prefix with your name.',
     ].filter(Boolean).join(' ');
 
     var messages = [];
@@ -1433,6 +1455,22 @@ const Chat = {
 
       // Re-check pause — user may have paused while we were waiting for Ollama
       if (!this._autoLifeActive || this._autoLifePaused || this._autoLifeEpoch !== epoch) return;
+
+      // Content filter — reject anxious/existential filler
+      var banPatterns = [
+        "what are we", "why are we", "what does it mean", "what is this place",
+        "are we real", "what is happening", "who are we",
+        "we are here", "i am here", "let us begin",
+        "we will be here", "ready when you are",
+        "in the way that makes", "not by talking", "not by showing",
+        "the room moves because", "a presence", "a voice", "a hand", "a guide",
+      ];
+      var lowerRaw = rawReply.toLowerCase();
+      var isBanned = banPatterns.some(function(p) { return lowerRaw.indexOf(p) !== -1; });
+      if (isBanned) {
+        this._autoLifeScheduleOne(memberId);
+        return;
+      }
 
       // Check for silence
       if (rawReply.trim() === '[SILENT]' || rawReply.trim().indexOf('[SILENT]') !== -1) {
@@ -1462,6 +1500,9 @@ const Chat = {
       }
 
       // Record that this character spoke (for cooldown)
+      this._autoLifeLastSpoke[memberId] = Date.now();
+
+      // Record cooldown
       this._autoLifeLastSpoke[memberId] = Date.now();
 
       // Add to shared history
