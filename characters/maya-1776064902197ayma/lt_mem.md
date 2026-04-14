@@ -1,3 +1,12 @@
 # Maya — Long-Term Memory
 
-<!-- Important lessons and knowledge -->
+<!-- Persistent knowledge accumulated over time. Rarely changes. -->
+
+## Key Decisions
+<!-- Important decisions made, with context -->
+
+## Lessons Learned
+<!-- Insights gained from experience -->
+
+## Important Facts
+<!-- Things worth remembering permanently -->
