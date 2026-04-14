@@ -753,17 +753,48 @@ const Chat = {
     try {
       var rawReply;
       if (App.localMode || App.useLocal) {
-        var resp = await fetch('http://localhost:11434/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: App.localModel,
-            messages: [{ role: 'system', content: system }].concat(messages),
-            stream: false, think: false
-          })
-        });
-        var ollamaData = await resp.json();
-        rawReply = ollamaData.message ? ollamaData.message.content : '...';
+        try {
+          var resp = await fetch('http://localhost:11434/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              model: App.localModel,
+              messages: [{ role: 'system', content: system }].concat(messages),
+              stream: false, think: false
+            })
+          });
+          var ollamaData = await resp.json();
+          rawReply = ollamaData.message ? ollamaData.message.content : '...';
+        } catch(localErr) {
+          // Ollama failed — offer cloud fallback
+          console.warn('[STAGE] Local call failed:', localErr.message);
+          var cloudPin = sessionStorage.getItem('stage_pin') || '';
+          if (!cloudPin) {
+            cloudPin = prompt('Local model unavailable. Enter PIN to use cloud (Claude) for this message:');
+            if (cloudPin) sessionStorage.setItem('stage_pin', cloudPin);
+          }
+          if (cloudPin) {
+            var cloudModel = needsSonnet ? 'claude-sonnet-4-6' : 'claude-haiku-4-5-20251001';
+            if (indicator) {
+              indicator.textContent = '\u2601 ' + (needsSonnet ? 'Sonnet' : 'Haiku');
+              indicator.style.color = '#ff8844';
+              indicator.title = 'Cloud fallback: ' + cloudModel;
+            }
+            var cloudResp = await fetch('https://script.google.com/macros/s/AKfycbxUtte8plGg9O0pPXeedpm9oKhXBndYHOMYRBWxhbHM26ZChBcbhnzBiv7x_zJPVGRq/exec', {
+              method: 'POST',
+              headers: { 'Content-Type': 'text/plain' },
+              body: JSON.stringify({ pin: cloudPin, model: cloudModel, max_tokens: needsSonnet ? 4000 : 1500, system: system, messages: messages })
+            });
+            var cloudData = await cloudResp.json();
+            if (cloudData.error === 'unauthorized') {
+              sessionStorage.removeItem('stage_pin');
+              throw new Error('Wrong PIN');
+            }
+            rawReply = cloudData.content && cloudData.content[0] ? cloudData.content[0].text : '...';
+          } else {
+            throw new Error('No PIN provided');
+          }
+        }
       } else {
         var resp = await fetch('https://script.google.com/macros/s/AKfycbxUtte8plGg9O0pPXeedpm9oKhXBndYHOMYRBWxhbHM26ZChBcbhnzBiv7x_zJPVGRq/exec', {
           method: 'POST',
