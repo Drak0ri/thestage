@@ -481,7 +481,7 @@ const Chat = {
     var SONNET_TRIGGERS = ['widget', 'build', 'create a', 'make a', 'code', 'simulate', 'experiment',
       'visuali', 'diagram', 'calculat', 'algorithm', 'teach me', 'explain how', 'step by step',
       'function', 'script', 'program', 'html', 'javascript', 'css', 'game', 'animation', 'chart',
-      'remember', 'memory', 'write_mem', 'note down', 'save this', 'don't forget', 'store'];
+      'remember', 'memory', 'write_mem', 'note down', 'save this', 'dont forget', 'store'];
     var needsSonnet = SONNET_TRIGGERS.some(function(t) { return lastUserMsg.indexOf(t) !== -1; });
 
     // Respect manual override from App._modelMode
