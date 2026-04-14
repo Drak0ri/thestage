@@ -61,21 +61,29 @@ const App = {
   _updateAiModeBtn() {
     var btn = document.getElementById('btn-ai-mode');
     if (!btn) return;
-    if (this.localMode) {
+    var indicator = document.getElementById('model-indicator');
+    if (this.localMode || this.useLocal) {
       btn.textContent = '💻 LOCAL';
       btn.style.borderColor = '#44cc66';
       btn.style.opacity = '1';
-      btn.title = 'Using Ollama — click to switch to Cloud (PIN required)';
-    } else if (this.useLocal) {
-      btn.textContent = '💻 LOCAL';
-      btn.style.borderColor = '#44cc66';
-      btn.style.opacity = '1';
-      btn.title = 'Using Ollama (' + this.localModel + ') — click to switch to Cloud';
+      btn.title = 'Using Ollama (' + this.localModel + ') — click to switch to Cloud' + (this.localMode ? ' (PIN required)' : '');
+      if (indicator) {
+        var shortName = this.localModel.split(':')[0];
+        indicator.textContent = '◆ ' + shortName;
+        indicator.style.color = '#44cc66';
+        indicator.title = 'Local: ' + this.localModel;
+      }
     } else {
       btn.textContent = '☁️ CLOUD';
       btn.style.borderColor = '';
       btn.style.opacity = '1';
       btn.title = 'Using Claude API — click to switch to Local';
+      if (indicator) {
+        var mode = this._modelMode || 'auto';
+        if (mode === 'sonnet') { indicator.textContent = '✦ Sonnet'; indicator.style.color = '#ffcc44'; }
+        else if (mode === 'haiku') { indicator.textContent = '◆ Haiku'; indicator.style.color = '#aaddff'; }
+        else { indicator.textContent = '◆ Auto'; indicator.style.color = '#88aaff'; }
+      }
     }
   },
 
