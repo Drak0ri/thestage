@@ -1000,13 +1000,14 @@ const Chat = {
         }
 
         // ── Parse [UPDATE_FILE:filename|content] — own identity files ────────
-        var updateFilesFound = 0;
-        var updateFileRe = /\[UPDATE_FILE:([^\|]+)\|([^\]]+)\]/g;
-        var updateFileMatch;
-        while ((updateFileMatch = updateFileRe.exec(rawReply)) !== null) {
-          updateFilesFound++;
-          var ufName = updateFileMatch[1].trim();
-          var ufContent = updateFileMatch[2].trim();
+        var updateFileTags = Chat._parseTags(rawReply, 'UPDATE_FILE');
+        console.log('[STAGE DEBUG] UPDATE_FILE tags found:', updateFileTags.length);
+        for (var ufi = 0; ufi < updateFileTags.length; ufi++) {
+          var ufTag = updateFileTags[ufi];
+          var ufPipe = ufTag.inner.indexOf('|');
+          if (ufPipe === -1) continue;
+          var ufName = ufTag.inner.substring(0, ufPipe).trim();
+          var ufContent = ufTag.inner.substring(ufPipe + 1).trim();
           var allowedFiles = ['soul.md', 'skills.md', 'goals.md', 'relationships.md'];
           if (allowedFiles.indexOf(ufName) !== -1) {
             var fileLimit = 3000;
@@ -1027,7 +1028,7 @@ const Chat = {
         // ── Fallback: AI mimics system confirmation instead of using the tag ──
         // The AI writes things like "[📝 Larry updated his soul.md]" then content
         // Match by searching for "updated his/her/their <file>]" in the raw reply
-        if (updateFilesFound === 0) {
+        if (updateFileTags.length === 0) {
           var allowedFb = ['soul.md', 'skills.md', 'goals.md', 'relationships.md'];
           for (var afi = 0; afi < allowedFb.length; afi++) {
             var fbFile = allowedFb[afi];
