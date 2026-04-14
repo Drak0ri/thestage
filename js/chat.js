@@ -332,8 +332,8 @@ const Chat = {
       this._maybeRaiseHands(member.id);
     }
 
-    // Run agent-to-agent conversation from hand-raises
-    await this._runAgentRound(lastResponderId);
+    // Hand-raises show visually but DON'T auto-fire — user must click them
+    // await this._runAgentRound(lastResponderId);
     this._debouncedCloudSave();
     // Resume auto-life if it was active
     if (wasAutoLife && this._autoLifeActive) this._autoLifeScheduleAll();
