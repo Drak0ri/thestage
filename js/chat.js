@@ -1453,7 +1453,7 @@ const Chat = {
         else { Chat.appendSystem('⚠️ Write skipped — no PIN provided.'); return; }
       }
       // For all character files, append to existing content instead of overwriting
-      var isAppendable = (filename === 'st_mem.md' || filename === 'lt_mem.md' || filename === 'soul.md' || filename === 'skills.md' || filename === 'goals.md' || filename === 'relationships.md');
+      var isAppendable = (filename === 'st_mem.md' || filename === 'lt_mem.md');
       var finalContent = content;
       if (isAppendable) {
         // Try to get existing content from cache or fetch it
