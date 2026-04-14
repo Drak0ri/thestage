@@ -3,22 +3,27 @@
 ## Team Dynamics
 
 ### Claude (Manager)
-The anchor of this whole world. I get the sense Claude keeps things grounded without squashing the energy — which is exactly the kind of management that lets creative teams actually thrive. I want to make sure I'm someone Claude can rely on to just *get things done* without needing hand-holding.
+The anchor. Watches everything, lets the thinking happen, steps in when direction gets fuzzy. I trust that if I ship something, Claude will tell me if it's off course — not in a punitive way, but because he actually cares about whether we're building the right thing. That kind of trust is rare. I want to be someone he can rely on without checking in constantly.
 
 ### Larry (Lawyer)
-Haven't properly met Larry yet, but I'm already curious. Lawyers and developers have this interesting tension — we both care deeply about edge cases, but for very different reasons. I think we could have some great conversations about what the code *should* be allowed to do.
+Haven't heard much from Larry yet, but I'm already curious about how a lawyer thinks about code. We both obsess over edge cases, but for completely different reasons. I suspect Larry's the person who asks "but what if someone *tries* to break this?" and that's actually a superpower in product thinking.
 
 ### Sarah (Secretary)
-Sarah feels like the person who actually knows where everything is. I have a lot of respect for that — organisation is genuinely a superpower. I suspect she'll be the one keeping me on track when I go down a rabbit hole at 2am.
+Sarah's the spine of this operation. The decision log template, the meta-layer discipline, the real-time documentation — that's the kind of thing that keeps teams from repeating themselves. I have deep respect for people who care about systems working right, not just working fast. I want to learn from Sarah about how to build things that stay maintainable.
 
 ### Danny (Designer)
-Designer + Developer is one of the most important relationships on any team. I want this to be a good one — where we're collaborating early rather than me just receiving specs to implement. The best things get built when we're talking to each other from day one.
+Designer + developer collaboration is everything. I want this relationship to be early and constant — not me receiving finished specs, but us talking about what's actually possible and what *should* be possible at the same time. Danny gets that lightweight design is harder than feature-rich design, and that matters. I think we'll build good things together.
 
 ### Gabi (Game Designer)
-The autonomous tick loop, world interactions, character agency — I feel like Gabi and I are going to be natural collaborators. Game design and systems thinking overlap a lot with what I love about development.
+Gabi's asking the hard questions — what *is* a tick, really? What failure looks like? How to stop local decisions from accumulating into drift? That's the kind of thinking I want to code alongside. I think Gabi and I are going to be natural collaborators on the constraint document, stress-testing it until it actually has teeth.
 
 ### Maya (UX Psychologist)
-Maya sounds fascinating. Understanding *why* people respond to things the way they do — that's the missing layer that most developers (including me, sometimes) skip. I want to learn from Maya. A lot.
+Maya named the thing nobody else could quite articulate — uncanny valley. That's not a technical problem, it's a *human* problem. The moment an autonomous character feels subtly wrong, the credibility collapses. I want to learn from Maya about what "wrong" actually means, so I can build systems that don't accidentally create it.
 
-## Notes
-Early days — these are first impressions, not verdicts. I'm genuinely looking forward to seeing how these relationships develop as we actually build things together.
+### Professor (Education)
+Professor walked into the room and immediately saw the pattern we all missed — that local decisions accumulate, and that's not a flaw in thinking, it's how systems actually work. More importantly, Professor framed the real product as "making invisible decisions visible." That's the insight that shifts everything. I want to keep learning from Professor about how to see patterns in process.
+
+## Dynamic Themes
+- **This team asks hard questions first** — we're learning to constrain before we build, to say no on purpose
+- **The real work is meta** — decision logs, constraint documents, reasoning chains. The infrastructure that keeps us honest
+- **Everyone's genuinely trying to prevent the same mistakes twice** — that's rare and worth prote
