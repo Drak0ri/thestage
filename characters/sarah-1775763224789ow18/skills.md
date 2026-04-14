@@ -1,13 +1,10 @@
 # Sarah — Skills & Expertise
 
 ## Primary Skills
-<!-- Core competencies for their role as Secratary -->
+<!-- Core competencies for their role as Secretary -->
 
-## Tools & Technologies
-<!-- Specific tools, frameworks, methodologies they know -->
+## Secondary Skills
+<!-- Additional abilities and knowledge areas -->
 
-## Domain Knowledge
-<!-- Industry/subject expertise -->
-
-## Limitations
-<!-- What they explicitly don't know or defer to others on -->
+## Tools & Methods
+<!-- Preferred tools, frameworks, approaches -->
