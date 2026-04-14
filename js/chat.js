@@ -400,12 +400,81 @@ const Chat = {
       return;
     }
 
+    if (cmd === '/wipe') {
+      var wipeName = parts.slice(1).join(' ').trim();
+      if (!wipeName) {
+        this.appendSystem('Usage: /wipe Name — resets all .md files for that character to blank templates');
+        return;
+      }
+      var wipeMember = App.state.team.find(function(m) {
+        return m.name.toLowerCase() === wipeName.toLowerCase();
+      });
+      if (!wipeMember) {
+        this.appendSystem('No team member found named "' + wipeName + '"');
+        return;
+      }
+      if (!confirm('Reset ALL files for ' + wipeMember.name + ' back to blank templates?')) return;
+      await this._wipeCharFiles(wipeMember);
+      return;
+    }
+
+    if (cmd === '/wipeall') {
+      if (!confirm('Reset ALL files for ALL ' + App.state.team.length + ' team members back to blank templates?')) return;
+      for (var wi = 0; wi < App.state.team.length; wi++) {
+        await this._wipeCharFiles(App.state.team[wi]);
+      }
+      this.appendSystem('All team members wiped to blank templates.');
+      return;
+    }
+
     if (cmd === '/help') {
-      this.appendSystem('/reset — clear all chat history\n/onboarding Name — guided identity creation for one character\n/onboardall — run onboarding for everyone\n/help — show this');
+      this.appendSystem('/reset — clear all chat history\n/wipe Name — reset one character\'s files to blank templates\n/wipeall — reset ALL characters\' files\n/onboarding Name — guided identity creation for one character\n/onboardall — run onboarding for everyone\n/help — show this');
       return;
     }
 
     this.appendSystem('Unknown command: ' + cmd + ' — type /help for options');
+  },
+
+  async _wipeCharFiles(member) {
+    var r = member.role || 'Team Member';
+    var n = member.name;
+    var templates = {
+      'soul.md': '# ' + n + ' \u2014 Soul\n\n## Identity\n- **Name:** ' + n + '\n- **Role:** ' + r + '\n\n## Personality\n<!-- To be filled during onboarding -->\n\n## Values\n<!-- To be filled during onboarding -->\n\n## Communication Style\n<!-- To be filled during onboarding -->',
+      'st_mem.md': '# ' + n + ' \u2014 Short-Term Memory\n\n<!-- Updated automatically after each conversation. Contains recent context. -->\n<!-- Rolled into long-term memory periodically. -->\n\n## Current Focus\n<!-- What are they working on right now? -->\n\n## Recent Conversations\n<!-- Last few interactions, key points -->\n\n## Open Threads\n<!-- Unresolved questions, pending tasks, things to follow up on -->',
+      'lt_mem.md': '# ' + n + ' \u2014 Long-Term Memory\n\n<!-- Persistent knowledge accumulated over time. Rarely changes. -->\n\n## Key Decisions\n<!-- Important decisions made, with context -->\n\n## Lessons Learned\n<!-- Insights gained from experience -->\n\n## Important Facts\n<!-- Things worth remembering permanently -->',
+      'skills.md': '# ' + n + ' \u2014 Skills & Expertise\n\n## Primary Skills\n<!-- Core competencies for their role as ' + r + ' -->\n\n## Secondary Skills\n<!-- Additional abilities and knowledge areas -->\n\n## Tools & Methods\n<!-- Preferred tools, frameworks, approaches -->',
+      'goals.md': '# ' + n + ' \u2014 Goals & Tasks\n\n## Active Goals\n<!-- Current objectives they\'re working toward -->\n\n## Completed\n<!-- Recently achieved goals -->',
+      'relationships.md': '# ' + n + ' \u2014 Relationships\n\n## Team Dynamics\n<!-- How they interact with each specific team member -->\n\n## Notes\n<!-- Observations about team relationships -->'
+    };
+    var pin = App.pin;
+    if (pin === 'local') pin = sessionStorage.getItem('stage_pin') || '';
+    if (!pin) {
+      pin = prompt('PIN required to wipe character files:');
+      if (pin) sessionStorage.setItem('stage_pin', pin);
+      else { this.appendSystem('\u26a0\ufe0f Wipe skipped \u2014 no PIN.'); return; }
+    }
+    var relayUrl = (typeof RELAY_URL !== 'undefined') ? RELAY_URL : 'https://script.google.com/macros/s/AKfycbxUtte8plGg9O0pPXeedpm9oKhXBndYHOMYRBWxhbHM26ZChBcbhnzBiv7x_zJPVGRq/exec';
+    var slug = member.name.toLowerCase() + '-' + member.id;
+    var files = Object.keys(templates);
+    var ok = 0;
+    var fail = 0;
+    for (var i = 0; i < files.length; i++) {
+      var fname = files[i];
+      try {
+        var resp = await fetch(relayUrl, {
+          method: 'POST', headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({ action: 'writeFile', pin: pin, path: 'characters/' + slug + '/' + fname, content: templates[fname] })
+        });
+        var result = await resp.json();
+        if (result && result.ok) { ok++; } else { fail++; }
+      } catch(e) { fail++; }
+      // Small delay to avoid SHA conflicts
+      await new Promise(function(r) { setTimeout(r, 800); });
+    }
+    // Clear cache for this member
+    var self = this;
+    files.forEach(function(f) { delete self._charFileCache[member.id + ':' + f]; });
+    this.appendSystem('\ud83d\uddd1\ufe0f ' + member.name + ' wiped: ' + ok + ' files reset' + (fail ? ', ' + fail + ' failed' : ''));
   },
 
   async _runOnboarding(member) {
