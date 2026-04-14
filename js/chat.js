@@ -985,36 +985,47 @@ const Chat = {
         }
 
         // ── Fallback: AI mimics system confirmation instead of using the tag ──
-        // Pattern: [📝 Name updated his/her filename.md] followed by content
+        // The AI writes things like "[📝 Larry updated his soul.md]" then content
+        // Match by searching for "updated his/her/their <file>]" in the raw reply
         if (updateFileTags.length === 0) {
           var allowedFb = ['soul.md', 'skills.md', 'goals.md', 'relationships.md'];
-          var pencilEmoji = '\ud83d\udcdd';
-          allowedFb.forEach(function(fbFile) {
-            // Search for patterns like "[📝 Larry updated his soul.md]" or "[📝 Larry updated their soul.md]"
-            var patterns = [
-              '[' + pencilEmoji + ' ' + member.name + ' updated his ' + fbFile + ']',
-              '[' + pencilEmoji + ' ' + member.name + ' updated her ' + fbFile + ']',
-              '[' + pencilEmoji + ' ' + member.name + ' updated their ' + fbFile + ']'
+          for (var afi = 0; afi < allowedFb.length; afi++) {
+            var fbFile = allowedFb[afi];
+            var searchTerms = [
+              member.name + ' updated his ' + fbFile + ']',
+              member.name + ' updated her ' + fbFile + ']',
+              member.name + ' updated their ' + fbFile + ']'
             ];
-            patterns.forEach(function(pat) {
-              var patIdx = rawReply.indexOf(pat);
-              if (patIdx === -1) return;
-              var contentStart = patIdx + pat.length;
-              // Content runs until the next [📝 or end of reply
-              var nextPencil = rawReply.indexOf('[' + pencilEmoji, contentStart);
-              var contentEnd = nextPencil > contentStart ? nextPencil : rawReply.length;
-              var fbContent = rawReply.substring(contentStart, contentEnd).trim();
+            var found = false;
+            for (var si = 0; si < searchTerms.length && !found; si++) {
+              var termIdx = rawReply.indexOf(searchTerms[si]);
+              if (termIdx === -1) continue;
+              found = true;
+              var contentStart = termIdx + searchTerms[si].length;
+              // Content runs until the next "updated his/her/their *.md]" or end
+              var nextFileIdx = rawReply.length;
+              for (var nfi = 0; nfi < allowedFb.length; nfi++) {
+                var pronouns = ['his', 'her', 'their'];
+                for (var pi = 0; pi < pronouns.length; pi++) {
+                  var ni = rawReply.indexOf('updated ' + pronouns[pi] + ' ' + allowedFb[nfi] + ']', contentStart);
+                  if (ni > contentStart && ni < nextFileIdx) {
+                    var bracketIdx = rawReply.lastIndexOf('[', ni);
+                    if (bracketIdx >= contentStart) nextFileIdx = bracketIdx;
+                  }
+                }
+              }
+              var fbContent = rawReply.substring(contentStart, nextFileIdx).trim();
               if (fbContent.length > 10) {
                 if (fbContent.length > 3000) fbContent = fbContent.substring(0, 3000);
                 console.log('[STAGE DEBUG] Fallback detected ' + fbFile + ', content length:', fbContent.length);
-                Chat._writeCharFile(member, fbFile, fbContent);
-                var fbMsg = { role: 'system', content: pencilEmoji + ' ' + member.name + ' updated their ' + fbFile + ' (auto-detected)', speakerId: null };
+                await Chat._writeCharFile(member, fbFile, fbContent);
+                Chat.appendSystem('\ud83d\udcdd ' + member.name + ' updated their ' + fbFile + ' (auto-detected)');
+                var fbMsg = { role: 'system', content: '\ud83d\udcdd ' + member.name + ' updated their ' + fbFile + ' (auto-detected)', speakerId: null };
                 Chat.sharedHistory.push(fbMsg);
                 Chat._appendToAllForward(fbMsg);
-                Chat.appendSystem(pencilEmoji + ' ' + member.name + ' updated their ' + fbFile + ' (auto-detected)');
               }
-            });
-          });
+            }
+          }
         }
 
         // ── Parse [REQUEST_NEW:Name|Role|reason] — request new member ────────
