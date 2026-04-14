@@ -1234,10 +1234,7 @@ const Chat = {
         if (existing && existing.trim()) {
           // Append new entry with timestamp
           var now = new Date().toLocaleString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
-          finalContent = existing.trimEnd() + '
-
----
-**' + now + ':** ' + content;
+          finalContent = existing.trimEnd() + '\n\n---\n**' + now + ':** ' + content;
         }
       }
       var writePayload = { action: 'writeFile', pin: pin, path: path, content: finalContent };
