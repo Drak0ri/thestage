@@ -379,6 +379,14 @@ const Chat = {
     var parts = text.split(/\s+/);
     var cmd = parts[0].toLowerCase();
 
+    if (cmd === '/clear') {
+      this.sharedHistory = [];
+      this._restored = false;
+      this.renderMessages();
+      this.appendSystem('Chat display cleared. History still saved.');
+      return;
+    }
+
     if (cmd === '/reset') {
       if (!confirm('This will clear ALL chat history for everyone. Team roster and character files are kept. Continue?')) return;
       App.state.chatHistory = {};
