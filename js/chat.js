@@ -1210,8 +1210,13 @@ const Chat = {
       var relayUrl = (typeof RELAY_URL !== 'undefined') ? RELAY_URL : 'https://script.google.com/macros/s/AKfycbxUtte8plGg9O0pPXeedpm9oKhXBndYHOMYRBWxhbHM26ZChBcbhnzBiv7x_zJPVGRq/exec';
       var pin = App.pin;
       if (pin === 'local') pin = sessionStorage.getItem('stage_pin') || '';
+      if (!pin) {
+        pin = prompt('PIN required to save character files:');
+        if (pin) sessionStorage.setItem('stage_pin', pin);
+        else { Chat.appendSystem('⚠️ Write skipped — no PIN provided.'); return; }
+      }
       var writePayload = { action: 'writeFile', pin: pin, path: path, content: content };
-      console.log('[STAGE DEBUG] writeFile request:', { pin: App.pin, pinType: typeof App.pin, path: path, contentLen: content.length });
+      console.log('[STAGE DEBUG] writeFile request:', { pin: '***', path: path, contentLen: content.length });
       var resp = await fetch(relayUrl, {
         method: 'POST', headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify(writePayload)
