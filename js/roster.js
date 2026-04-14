@@ -100,19 +100,13 @@ const Roster = (function() {
       tile.classList.add('hand-raised');
     }
 
-    // Tooltip
-    var tip = document.createElement('div');
-    tip.className = 'roster-tip';
+    // Tooltip — native title, never clipped
     var role = member.role || 'team member';
-    var state = isHandRaised ? 'wants to speak \u2014 click to let them in'
-              : isSpeaking ? 'speaking \u2014 click to remove'
-              : isOnStage ? 'listening \u2014 click to remove'
-              : 'off stage \u2014 click to add';
-    tip.innerHTML =
-      '<strong>' + _esc(member.name) + '</strong>' +
-      '<span>' + _esc(role) + '</span>' +
-      '<em>' + state + '</em>';
-    tile.appendChild(tip);
+    var state = isHandRaised ? 'wants to speak — click to let them in'
+              : isSpeaking ? 'speaking — click to remove'
+              : isOnStage ? 'listening — click to remove'
+              : 'off stage — click to add';
+    tile.title = member.name + ' (' + role + ')\n' + state;
 
     // Click handler
     tile.addEventListener('click', function() {
