@@ -980,11 +980,15 @@ const Chat = {
         console.log('[STAGE DEBUG] rawReply FULL:', rawReply.substring(0, 500));
         console.log('[STAGE DEBUG] rawReply tags check:', rawReply.match(/\[WRITE_MEM[^\]]*\]/g) || 'NO WRITE_MEM TAGS FOUND');
         console.log('[STAGE DEBUG] UPDATE_FILE tags:', rawReply.match(/\[UPDATE_FILE:[^\]]*\]/g) || 'NO UPDATE_FILE TAGS FOUND');
-        var writeMemRe = /\[WRITE_MEM:(st|lt)\|([^\]]+)\]/g;
-        var writeMemMatch;
-        while ((writeMemMatch = writeMemRe.exec(rawReply)) !== null) {
-          var memType = writeMemMatch[1]; // 'st' or 'lt'
-          var memContent = writeMemMatch[2].trim();
+        var writeMemTags = Chat._parseTags(rawReply, 'WRITE_MEM');
+        console.log('[STAGE DEBUG] WRITE_MEM tags found:', writeMemTags.length);
+        for (var wmi = 0; wmi < writeMemTags.length; wmi++) {
+          var wmTag = writeMemTags[wmi];
+          var wmPipe = wmTag.inner.indexOf('|');
+          if (wmPipe === -1) continue;
+          var memType = wmTag.inner.substring(0, wmPipe).trim();
+          var memContent = wmTag.inner.substring(wmPipe + 1).trim();
+          if (memType !== 'st' && memType !== 'lt') continue;
           var memFile = memType === 'st' ? 'st_mem.md' : 'lt_mem.md';
           var memLimit = memType === 'st' ? 2000 : 4000;
           if (memContent.length > memLimit) {
