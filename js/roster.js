@@ -70,8 +70,9 @@ const Roster = (function() {
     var ctx = canvas.getContext('2d');
     ctx.save();
     ctx.scale(1.5, 1.5);
-    var pal = PALETTES[member.colorIdx % PALETTES.length];
-    drawPixelChar(ctx, pal, 0);
+    var roleType = detectRoleType(member.role || '');
+    var pal = Object.assign(getRoleColors(roleType, member.colorIdx || 0), { roleType: roleType });
+    drawPixelChar(ctx, pal, 0, { roleType: roleType });
     ctx.restore();
     tile.appendChild(canvas);
 
