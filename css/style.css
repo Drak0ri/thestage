@@ -478,6 +478,10 @@ body {
   right: 4px;
 }
 .roster-dot.active { background: var(--green); }
+.roster-dot.speaking { background: #ffcc44; box-shadow: 0 0 4px #ffcc44; }
+
+.roster-tile.speaking { border-color: #ffcc44; box-shadow: 0 0 6px rgba(255,204,68,0.3); }
+.roster-tile.on-stage:not(.speaking) { border-color: var(--green); opacity: 0.7; }
 
 /* Tooltip */
 .roster-tip {
