@@ -469,6 +469,7 @@ const Chat = {
 '• Claude keeps order and can override decisions when needed.\n' +
 '--- END WORLD RULES ---',
       'Keep responses SHORT (2-3 sentences unless creating an artifact). Stay in character. Never break character. Do not prefix your reply with your own name.',
+      'CRITICAL — MEMORY WRITES: When asked to remember, note, or write something to memory, you MUST include the literal tag [WRITE_MEM:st|your content here] or [WRITE_MEM:lt|your content here] in your response. Do NOT just say you wrote it — the tag is what actually saves it. Without the tag, nothing is saved. Example: if asked "remember that the meeting is Tuesday", your response must contain [WRITE_MEM:st|Meeting is on Tuesday] somewhere in it.',
     ].filter(Boolean).join(' ');
 
     // ── Smart model selection ─────────────────────────────────────────────────
@@ -479,7 +480,8 @@ const Chat = {
     }
     var SONNET_TRIGGERS = ['widget', 'build', 'create a', 'make a', 'code', 'simulate', 'experiment',
       'visuali', 'diagram', 'calculat', 'algorithm', 'teach me', 'explain how', 'step by step',
-      'function', 'script', 'program', 'html', 'javascript', 'css', 'game', 'animation', 'chart'];
+      'function', 'script', 'program', 'html', 'javascript', 'css', 'game', 'animation', 'chart',
+      'remember', 'memory', 'write_mem', 'note down', 'save this', 'don't forget', 'store'];
     var needsSonnet = SONNET_TRIGGERS.some(function(t) { return lastUserMsg.indexOf(t) !== -1; });
 
     // Respect manual override from App._modelMode
