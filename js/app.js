@@ -298,7 +298,95 @@ const App = {
     this.state.team.push(member);
     Storage.cloudSave(this.state);
     World.render();
+    // Create template character files
+    this._createCharFiles(member);
     return member;
+  },
+
+  async _createCharFiles(member) {
+    var r = member.role || 'Team Member';
+    var n = member.name;
+    var templates = {
+      'soul.md': '# ' + n + ' — Soul
+
+## Identity
+- **Name:** ' + n + '
+- **Role:** ' + r + '
+
+## Personality
+<!-- Core personality traits, values, communication style -->
+
+## Values
+<!-- What matters most to this person -->
+
+## Communication Style
+<!-- How they talk, what phrases they use, their tone -->',
+      'st_mem.md': '# ' + n + ' — Short-Term Memory
+
+<!-- Updated automatically after each conversation. Contains recent context. -->
+<!-- Rolled into long-term memory periodically. -->
+
+## Current Focus
+<!-- What are they working on right now? -->
+
+## Recent Conversations
+<!-- Last few interactions, key points -->
+
+## Open Threads
+<!-- Unresolved questions, pending tasks, things to follow up on -->',
+      'lt_mem.md': '# ' + n + ' — Long-Term Memory
+
+<!-- Persistent knowledge accumulated over time. Rarely changes. -->
+
+## Key Decisions
+<!-- Important decisions made, with context -->
+
+## Lessons Learned
+<!-- Insights gained from experience -->
+
+## Important Facts
+<!-- Things worth remembering permanently -->',
+      'skills.md': '# ' + n + ' — Skills & Expertise
+
+## Primary Skills
+<!-- Core competencies for their role as ' + r + ' -->
+
+## Secondary Skills
+<!-- Additional abilities and knowledge areas -->
+
+## Tools & Methods
+<!-- Preferred tools, frameworks, approaches -->',
+      'goals.md': '# ' + n + ' — Goals & Tasks
+
+## Active Goals
+<!-- Current objectives they're working toward -->
+
+## Completed
+<!-- Recently achieved goals -->',
+      'relationships.md': '# ' + n + ' — Relationships
+
+## Team Dynamics
+<!-- How they interact with each specific team member -->
+
+## Notes
+<!-- Observations about team relationships -->'
+    };
+    var pin = App.pin;
+    if (pin === 'local') pin = sessionStorage.getItem('stage_pin') || '';
+    if (!pin) return; // Can't write without PIN
+    var relayUrl = (typeof RELAY_URL !== 'undefined') ? RELAY_URL : 'https://script.google.com/macros/s/AKfycbxUtte8plGg9O0pPXeedpm9oKhXBndYHOMYRBWxhbHM26ZChBcbhnzBiv7x_zJPVGRq/exec';
+    var slug = member.name.toLowerCase() + '-' + member.id;
+    var files = Object.keys(templates);
+    for (var i = 0; i < files.length; i++) {
+      var fname = files[i];
+      try {
+        await fetch(relayUrl, {
+          method: 'POST', headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({ action: 'writeFile', pin: pin, path: 'characters/' + slug + '/' + fname, content: templates[fname] })
+        });
+      } catch(e) { console.warn('Failed to create ' + fname + ' for ' + member.name, e); }
+    }
+    console.log('[STAGE] Created template files for ' + member.name);
   },
 
   _addMember() {
