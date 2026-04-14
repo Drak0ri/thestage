@@ -694,6 +694,7 @@ const Chat = {
         }
 
         // ── Parse [WRITE_MEM:st|content] and [WRITE_MEM:lt|content] ──────────
+        console.log('[STAGE DEBUG] rawReply tags check:', rawReply.match(/\[WRITE_MEM[^\]]*\]/g) || 'NO WRITE_MEM TAGS FOUND');
         var writeMemRe = /\[WRITE_MEM:(st|lt)\|([^\]]+)\]/g;
         var writeMemMatch;
         while ((writeMemMatch = writeMemRe.exec(rawReply)) !== null) {
@@ -1205,10 +1206,16 @@ const Chat = {
       var result = await resp.json();
       if (result && result.ok) {
         this._charFileCache[member.id + ':' + filename] = { content: content, ts: Date.now() };
+        Chat.appendSystem('✅ ' + member.name + ' wrote to ' + filename + ' successfully.');
+        console.log('[STAGE DEBUG] writeFile OK:', path, 'content length:', content.length);
       } else {
+        Chat.appendSystem('❌ ' + member.name + ' failed to write ' + filename + ': ' + JSON.stringify(result));
         console.warn('writeFile relay returned:', result);
       }
-    } catch(e) { console.warn('Failed to write ' + filename + ' for ' + member.name, e); }
+    } catch(e) {
+      Chat.appendSystem('❌ ' + member.name + ' failed to write ' + filename + ': ' + e.message);
+      console.warn('Failed to write ' + filename + ' for ' + member.name, e);
+    }
   },
 
   // ── History persistence ───────────────────────────────────────────────────────
