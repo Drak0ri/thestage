@@ -202,6 +202,16 @@ const App = {
     );
   },
 
+  logout() {
+    sessionStorage.removeItem('stage_pin');
+    sessionStorage.removeItem('stage_local');
+    sessionStorage.removeItem('stage_local_model');
+    sessionStorage.removeItem('stage_useLocal');
+    App.pin = null;
+    App.localMode = false;
+    document.getElementById('pin-overlay').style.display = 'flex';
+  },
+
   setStatus(msg) {
     document.getElementById('status-bar').textContent = msg;
   },
@@ -361,6 +371,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (saved) { App.pin = saved; App.init(); }
   else { document.getElementById('pin-overlay').style.display = 'flex'; }
 });
+
 
 
 
