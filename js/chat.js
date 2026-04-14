@@ -939,6 +939,7 @@ const Chat = {
         }
 
         // ── Parse [WRITE_MEM:st|content] and [WRITE_MEM:lt|content] ──────────
+        console.log('[STAGE DEBUG] rawReply FULL:', rawReply.substring(0, 500));
         console.log('[STAGE DEBUG] rawReply tags check:', rawReply.match(/\[WRITE_MEM[^\]]*\]/g) || 'NO WRITE_MEM TAGS FOUND');
         console.log('[STAGE DEBUG] UPDATE_FILE tags:', rawReply.match(/\[UPDATE_FILE:[^\]]*\]/g) || 'NO UPDATE_FILE TAGS FOUND');
         var writeMemRe = /\[WRITE_MEM:(st|lt)\|([^\]]+)\]/g;
