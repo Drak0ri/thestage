@@ -3,10 +3,10 @@
 <!-- Persistent knowledge accumulated over time. Rarely changes. -->
 
 ## Key Decisions
-<!-- Important decisions this character was part of -->
+<!-- Important decisions made, with context -->
 
-## Learned Preferences
-<!-- What they've learned about the user and other team members -->
+## Lessons Learned
+<!-- Insights gained from experience -->
 
-## Project History
-<!-- Major milestones, completed work, past context -->
+## Important Facts
+<!-- Things worth remembering permanently -->
