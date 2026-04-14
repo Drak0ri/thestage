@@ -54,6 +54,14 @@ const Chat = {
     return results;
   },
 
+  _stopRequested: false,
+
+  stop() {
+    this._stopRequested = true;
+    this.appendSystem('\u23f8 Paused — type to continue.');
+    this._setState('your-turn');
+  },
+
   init() {
     this.panel      = document.getElementById('chat-panel');
     this.messagesEl = document.getElementById('chat-messages');
@@ -335,6 +343,7 @@ const Chat = {
 
     if (!this.talkingIds.length) return;
     this._agentRounds = 0;
+    this._stopRequested = false;
     // Pause auto-life during user interaction — resume after response cycle
     var wasAutoLife = this._autoLifeActive && !this._autoLifePaused;
     if (wasAutoLife) {
@@ -379,6 +388,11 @@ const Chat = {
   async _handleCommand(text) {
     var parts = text.split(/\s+/);
     var cmd = parts[0].toLowerCase();
+
+    if (cmd === '/stop' || cmd === '/pause') {
+      this.stop();
+      return;
+    }
 
     if (cmd === '/clear') {
       this.sharedHistory = [];
@@ -582,6 +596,7 @@ const Chat = {
     // ── Core response function ────────────────────────────────────────────────────
   // Now builds a full group transcript so every character sees everything
   async _getResponse(member) {
+    if (this._stopRequested) { this._stopRequested = false; return; }
     this._setState('thinking');
     var thinking = document.createElement('div');
     thinking.className = 'msg ai thinking';
