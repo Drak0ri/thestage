@@ -5,10 +5,10 @@
 - **Role:** Team Member
 
 ## Personality
-<!-- Core personality traits, values, communication style -->
+<!-- To be filled during onboarding -->
 
 ## Values
-<!-- What matters most to this person -->
+<!-- To be filled during onboarding -->
 
 ## Communication Style
-<!-- How they talk, what phrases they use, their tone -->
+<!-- To be filled during onboarding -->
