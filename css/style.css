@@ -417,6 +417,7 @@ body {
   gap: 8px;
   padding: 12px;
   overflow-y: auto;
+  overflow-x: visible;
   flex: 1;
   align-content: start;
   align-items: start;
@@ -487,7 +488,7 @@ body {
 .roster-tip {
   display: none;
   position: absolute;
-  bottom: calc(100% + 6px);
+  top: calc(100% + 6px);
   left: 50%;
   transform: translateX(-50%);
   background: var(--bg0);
