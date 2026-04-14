@@ -209,6 +209,9 @@ const App = {
     sessionStorage.removeItem('stage_useLocal');
     App.pin = null;
     App.localMode = false;
+    App.useLocal = false;
+    App.localModel = 'qwen3:1.7b';
+    this._updateAiModeBtn();
     document.getElementById('pin-overlay').style.display = 'flex';
   },
 
