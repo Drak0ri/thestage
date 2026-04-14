@@ -768,10 +768,17 @@ const Chat = {
         } catch(localErr) {
           // Ollama failed — offer cloud fallback
           console.warn('[STAGE] Local call failed:', localErr.message);
-          var cloudPin = sessionStorage.getItem('stage_pin') || '';
+          // PIN expires every 5 minutes for cloud fallback
+          var cloudPin = '';
+          var pinTs = parseInt(sessionStorage.getItem('stage_pin_ts') || '0', 10);
+          var pinExpired = (Date.now() - pinTs) > 5 * 60 * 1000;
+          if (!pinExpired) cloudPin = sessionStorage.getItem('stage_pin') || '';
           if (!cloudPin) {
-            cloudPin = prompt('Local model unavailable. Enter PIN to use cloud (Claude) for this message:');
-            if (cloudPin) sessionStorage.setItem('stage_pin', cloudPin);
+            cloudPin = prompt('Local model unavailable. Enter PIN to use cloud (Claude) for 5 minutes:');
+            if (cloudPin) {
+              sessionStorage.setItem('stage_pin', cloudPin);
+              sessionStorage.setItem('stage_pin_ts', Date.now().toString());
+            }
           }
           if (cloudPin) {
             var cloudModel = needsSonnet ? 'claude-sonnet-4-6' : 'claude-haiku-4-5-20251001';
