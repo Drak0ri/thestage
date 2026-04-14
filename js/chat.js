@@ -27,6 +27,33 @@ const Chat = {
   _agentMaxRounds: 3,
   _agentRunning: false,
 
+  // Parse tags like [TAG:arg1|arg2|content that can contain ] chars]
+  // Uses bracket counting — finds the LAST ] that closes the opening [
+  _parseTags(text, tagName) {
+    var results = [];
+    var search = '[' + tagName + ':';
+    var pos = 0;
+    while (true) {
+      var start = text.indexOf(search, pos);
+      if (start === -1) break;
+      // Find matching closing ] by counting brackets
+      var depth = 1;
+      var i = start + 1;
+      while (i < text.length && depth > 0) {
+        if (text[i] === '[') depth++;
+        else if (text[i] === ']') depth--;
+        i++;
+      }
+      if (depth === 0) {
+        // Extract inner content (between TAG: and final ])
+        var inner = text.substring(start + search.length, i - 1);
+        results.push({ full: text.substring(start, i), inner: inner });
+      }
+      pos = i;
+    }
+    return results;
+  },
+
   init() {
     this.panel      = document.getElementById('chat-panel');
     this.messagesEl = document.getElementById('chat-messages');
