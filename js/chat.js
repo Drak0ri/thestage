@@ -464,6 +464,8 @@ const Chat = {
 
       // Get their response
       await this._getResponse(member);
+      // Small delay between steps to let GitHub settle (avoid SHA conflicts)
+      await new Promise(function(r) { setTimeout(r, 1500); });
 
       this.appendSystem((i + 1) + '/4 complete');
     }
