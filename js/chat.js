@@ -984,6 +984,39 @@ const Chat = {
           }
         }
 
+        // ── Fallback: AI mimics system confirmation instead of using the tag ──
+        // Pattern: [📝 Name updated his/her filename.md] followed by content
+        if (updateFileTags.length === 0) {
+          var allowedFb = ['soul.md', 'skills.md', 'goals.md', 'relationships.md'];
+          var pencilEmoji = '\ud83d\udcdd';
+          allowedFb.forEach(function(fbFile) {
+            // Search for patterns like "[📝 Larry updated his soul.md]" or "[📝 Larry updated their soul.md]"
+            var patterns = [
+              '[' + pencilEmoji + ' ' + member.name + ' updated his ' + fbFile + ']',
+              '[' + pencilEmoji + ' ' + member.name + ' updated her ' + fbFile + ']',
+              '[' + pencilEmoji + ' ' + member.name + ' updated their ' + fbFile + ']'
+            ];
+            patterns.forEach(function(pat) {
+              var patIdx = rawReply.indexOf(pat);
+              if (patIdx === -1) return;
+              var contentStart = patIdx + pat.length;
+              // Content runs until the next [📝 or end of reply
+              var nextPencil = rawReply.indexOf('[' + pencilEmoji, contentStart);
+              var contentEnd = nextPencil > contentStart ? nextPencil : rawReply.length;
+              var fbContent = rawReply.substring(contentStart, contentEnd).trim();
+              if (fbContent.length > 10) {
+                if (fbContent.length > 3000) fbContent = fbContent.substring(0, 3000);
+                console.log('[STAGE DEBUG] Fallback detected ' + fbFile + ', content length:', fbContent.length);
+                Chat._writeCharFile(member, fbFile, fbContent);
+                var fbMsg = { role: 'system', content: pencilEmoji + ' ' + member.name + ' updated their ' + fbFile + ' (auto-detected)', speakerId: null };
+                Chat.sharedHistory.push(fbMsg);
+                Chat._appendToAllForward(fbMsg);
+                Chat.appendSystem(pencilEmoji + ' ' + member.name + ' updated their ' + fbFile + ' (auto-detected)');
+              }
+            });
+          });
+        }
+
         // ── Parse [REQUEST_NEW:Name|Role|reason] — request new member ────────
         var requestNewRe = /\[REQUEST_NEW:([^\|]+)\|([^\|]*)\|?([^\]]*)\]/g;
         var requestNewMatch;
