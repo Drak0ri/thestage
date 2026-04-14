@@ -296,8 +296,16 @@ const Chat = {
   // ── Send (user message) ───────────────────────────────────────────────────────
   async send() {
     var text = this.inputEl.value.trim();
-    if (!text || !this.talkingIds.length) return;
+    if (!text) return;
     this.inputEl.value = '';
+
+    // ── Slash commands ──────────────────────────────────────────────────────
+    if (text.startsWith('/')) {
+      await this._handleCommand(text);
+      return;
+    }
+
+    if (!this.talkingIds.length) return;
     this._agentRounds = 0;
     // Pause auto-life during user interaction — resume after response cycle
     var wasAutoLife = this._autoLifeActive && !this._autoLifePaused;
@@ -339,7 +347,105 @@ const Chat = {
     if (wasAutoLife && this._autoLifeActive) this._autoLifeScheduleAll();
   },
 
-  // ── Core response function ────────────────────────────────────────────────────
+  // ── Slash commands ──────────────────────────────────────────────────────────
+  async _handleCommand(text) {
+    var parts = text.split(/\s+/);
+    var cmd = parts[0].toLowerCase();
+
+    if (cmd === '/reset') {
+      if (!confirm('This will clear ALL chat history for everyone. Team roster and character files are kept. Continue?')) return;
+      App.state.chatHistory = {};
+      App.state.stageIds = [];
+      App.state.stageTalkingId = null;
+      App.state.stageTalkingIds = [];
+      this.sharedHistory = [];
+      this.forwardIds = [];
+      this.talkingIds = [];
+      this.talkingId = null;
+      this.handRaisedIds = [];
+      this.handRaisedIntents = {};
+      this._restored = false;
+      await Storage.cloudSave(App.state);
+      this.closePanel();
+      World.render();
+      if (typeof Roster !== 'undefined') Roster.render();
+      this.appendSystem('Chat history cleared. Use TEAM to summon someone.');
+      App.setStatus('reset complete — use TEAM to summon someone');
+      return;
+    }
+
+    if (cmd === '/onboarding') {
+      var targetName = parts.slice(1).join(' ').trim();
+      if (!targetName) {
+        this.appendSystem('Usage: /onboarding Name — starts guided self-discovery for that character');
+        return;
+      }
+      var member = App.state.team.find(function(m) {
+        return m.name.toLowerCase() === targetName.toLowerCase();
+      });
+      if (!member) {
+        this.appendSystem('No team member found named "' + targetName + '"');
+        return;
+      }
+      await this._runOnboarding(member);
+      return;
+    }
+
+    if (cmd === '/onboardall') {
+      if (!confirm('Run onboarding for ALL ' + App.state.team.length + ' team members? This will take a while.')) return;
+      for (var i = 0; i < App.state.team.length; i++) {
+        await this._runOnboarding(App.state.team[i]);
+      }
+      this.appendSystem('Onboarding complete for all team members!');
+      return;
+    }
+
+    if (cmd === '/help') {
+      this.appendSystem('/reset — clear all chat history\n/onboarding Name — guided identity creation for one character\n/onboardall — run onboarding for everyone\n/help — show this');
+      return;
+    }
+
+    this.appendSystem('Unknown command: ' + cmd + ' — type /help for options');
+  },
+
+  async _runOnboarding(member) {
+    // Ensure they're on stage and speaking
+    if (this.forwardIds.indexOf(member.id) === -1) {
+      this.forwardIds.push(member.id);
+    }
+    this.talkingIds = [member.id];
+    this.talkingId = member.id;
+    this.openPanel();
+    this.renderPanel();
+    World.render();
+    if (typeof Roster !== 'undefined') Roster.render();
+
+    this.appendSystem('Starting onboarding for ' + member.name + '...');
+
+    // Inject a special onboarding message as if the user said it
+    var onboardMsg = 'Welcome to The Stage, ' + member.name + '! You are a ' + (member.role || 'team member') + '. ' +
+      'Your identity files are blank and need to be filled in. Please go through each one and write your own content:\n\n' +
+      '1. **soul.md** — Who are you? Your personality, values, communication style. Use [UPDATE_FILE:soul.md|your content]\n' +
+      '2. **skills.md** — What are you good at? Primary and secondary skills. Use [UPDATE_FILE:skills.md|your content]\n' +
+      '3. **goals.md** — What are you working toward? Use [UPDATE_FILE:goals.md|your content]\n' +
+      '4. **relationships.md** — How do you relate to the team? Use [UPDATE_FILE:relationships.md|your content]\n\n' +
+      'Start with soul.md — tell me who you are. Be creative and make it your own. Write in first person. ' +
+      'After you write each file, I\'ll confirm and we\'ll move to the next one.';
+
+    this.sharedHistory.push({ role: 'user', content: onboardMsg, speakerId: null });
+    var userDiv = document.createElement('div');
+    userDiv.className = 'msg user';
+    userDiv.textContent = onboardMsg;
+    this.messagesEl.appendChild(userDiv);
+    this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
+    this._appendToAllForward({ role: 'user', content: onboardMsg, speakerId: null });
+
+    // Get their response — they should write their soul.md
+    await this._getResponse(member);
+    this._debouncedCloudSave();
+  },
+
+    // ── Core response function ────────────────────────────────────────────────────
   // Now builds a full group transcript so every character sees everything
   async _getResponse(member) {
     this._setState('thinking');
