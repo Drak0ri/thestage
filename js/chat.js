@@ -1219,7 +1219,8 @@ const Chat = {
       errSpeaker.textContent = 'ERROR';
       err.appendChild(errSpeaker);
       var errBody = document.createElement('span');
-      errBody.textContent = 'Connection failed — check your PIN and connection.';
+      errBody.textContent = 'Error: ' + (e.message || 'Connection failed — check your PIN and connection.');
+      console.error('[STAGE] _getResponse error:', e);
       err.appendChild(errBody);
       this.messagesEl.appendChild(err);
     }
