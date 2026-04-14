@@ -1199,9 +1199,11 @@ const Chat = {
     var path = 'characters/' + slug + '/' + filename;
     try {
       var relayUrl = (typeof RELAY_URL !== 'undefined') ? RELAY_URL : 'https://script.google.com/macros/s/AKfycbxUtte8plGg9O0pPXeedpm9oKhXBndYHOMYRBWxhbHM26ZChBcbhnzBiv7x_zJPVGRq/exec';
+      var writePayload = { action: 'writeFile', pin: App.pin, path: path, content: content };
+      console.log('[STAGE DEBUG] writeFile request:', { pin: App.pin, pinType: typeof App.pin, path: path, contentLen: content.length });
       var resp = await fetch(relayUrl, {
         method: 'POST', headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ action: 'writeFile', pin: App.pin, path: path, content: content })
+        body: JSON.stringify(writePayload)
       });
       var result = await resp.json();
       if (result && result.ok) {
