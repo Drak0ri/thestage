@@ -1215,10 +1215,10 @@ const Chat = {
         if (pin) sessionStorage.setItem('stage_pin', pin);
         else { Chat.appendSystem('⚠️ Write skipped — no PIN provided.'); return; }
       }
-      // For memory files, append to existing content instead of overwriting
-      var isMemFile = (filename === 'st_mem.md' || filename === 'lt_mem.md');
+      // For all character files, append to existing content instead of overwriting
+      var isAppendable = (filename === 'st_mem.md' || filename === 'lt_mem.md' || filename === 'soul.md' || filename === 'skills.md' || filename === 'goals.md' || filename === 'relationships.md');
       var finalContent = content;
-      if (isMemFile) {
+      if (isAppendable) {
         // Try to get existing content from cache or fetch it
         var existing = '';
         var cached = this._charFileCache[member.id + ':' + filename];
@@ -1241,7 +1241,7 @@ const Chat = {
         }
       }
       var writePayload = { action: 'writeFile', pin: pin, path: path, content: finalContent };
-      console.log('[STAGE DEBUG] writeFile request:', { pin: '***', path: path, contentLen: finalContent.length, appended: isMemFile });
+      console.log('[STAGE DEBUG] writeFile request:', { pin: '***', path: path, contentLen: finalContent.length, appended: isAppendable });
       var resp = await fetch(relayUrl, {
         method: 'POST', headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify(writePayload)
