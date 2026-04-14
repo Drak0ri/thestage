@@ -422,26 +422,53 @@ const Chat = {
 
     this.appendSystem('Starting onboarding for ' + member.name + '...');
 
-    // Inject a special onboarding message as if the user said it
-    var onboardMsg = 'Welcome to The Stage, ' + member.name + '! You are a ' + (member.role || 'team member') + '. ' +
-      'Your identity files are blank and need to be filled in. Please go through each one and write your own content:\n\n' +
-      '1. **soul.md** — Who are you? Your personality, values, communication style. Use [UPDATE_FILE:soul.md|your content]\n' +
-      '2. **skills.md** — What are you good at? Primary and secondary skills. Use [UPDATE_FILE:skills.md|your content]\n' +
-      '3. **goals.md** — What are you working toward? Use [UPDATE_FILE:goals.md|your content]\n' +
-      '4. **relationships.md** — How do you relate to the team? Use [UPDATE_FILE:relationships.md|your content]\n\n' +
-      'Start with soul.md — tell me who you are. Be creative and make it your own. Write in first person. ' +
-      'After you write each file, I\'ll confirm and we\'ll move to the next one.';
+    var steps = [
+      {
+        file: 'soul.md',
+        prompt: 'Welcome to The Stage, ' + member.name + '! You are a ' + (member.role || 'team member') + '. ' +
+          'Your identity files are all blank. Let\'s fill them in one by one.\n\n' +
+          'First: **soul.md** — this is your core identity. Write about who you are, your personality, your values, and how you communicate. ' +
+          'Be creative and make it genuinely yours. Write in first person.\n\n' +
+          'Use [UPDATE_FILE:soul.md|your content here] to save it. Write it now.'
+      },
+      {
+        file: 'skills.md',
+        prompt: 'Great, soul.md is done! Now: **skills.md** — what are you good at? What are your primary skills for your role as ' + (member.role || 'team member') + '? ' +
+          'Any secondary skills or tools you prefer?\n\nUse [UPDATE_FILE:skills.md|your content here] to save it. Write it now.'
+      },
+      {
+        file: 'goals.md',
+        prompt: 'Skills saved! Next: **goals.md** — what are you currently working toward? What do you want to achieve on this team?\n\n' +
+          'Use [UPDATE_FILE:goals.md|your content here] to save it. Write it now.'
+      },
+      {
+        file: 'relationships.md',
+        prompt: 'Almost done! Last one: **relationships.md** — how do you relate to the other team members? ' +
+          'The team is: ' + App.state.team.map(function(m) { return m.name + ' (' + (m.role || 'team member') + ')'; }).join(', ') + '.\n\n' +
+          'Write your initial impressions or how you\'d like to work with them. Use [UPDATE_FILE:relationships.md|your content here] to save it. Write it now.'
+      }
+    ];
 
-    this.sharedHistory.push({ role: 'user', content: onboardMsg, speakerId: null });
-    var userDiv = document.createElement('div');
-    userDiv.className = 'msg user';
-    userDiv.textContent = onboardMsg;
-    this.messagesEl.appendChild(userDiv);
-    this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
-    this._appendToAllForward({ role: 'user', content: onboardMsg, speakerId: null });
+    for (var i = 0; i < steps.length; i++) {
+      var step = steps[i];
+      var stepMsg = step.prompt;
 
-    // Get their response — they should write their soul.md
-    await this._getResponse(member);
+      // Inject as user message
+      this.sharedHistory.push({ role: 'user', content: stepMsg, speakerId: null });
+      var userDiv = document.createElement('div');
+      userDiv.className = 'msg user';
+      userDiv.textContent = stepMsg;
+      this.messagesEl.appendChild(userDiv);
+      this.messagesEl.scrollTop = this.messagesEl.scrollHeight;
+      this._appendToAllForward({ role: 'user', content: stepMsg, speakerId: null });
+
+      // Get their response
+      await this._getResponse(member);
+
+      this.appendSystem((i + 1) + '/4 complete');
+    }
+
+    this.appendSystem('Onboarding complete for ' + member.name + '! All identity files written.');
     this._debouncedCloudSave();
   },
 
