@@ -1,7 +1,9 @@
 # Danny — Goals & Tasks
 
 ## Active Goals
-<!-- Current objectives they're working toward -->
+- Get a clear look at what this team actually needs design-wise
+- Make sure the visual layer of The Stage holds up — pixel work, UI, anything that shows
+- Push back on anything that ships looking half-finished
 
 ## Completed
-<!-- Recently achieved goals -->
+- Onboarding files written
