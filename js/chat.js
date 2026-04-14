@@ -1289,6 +1289,9 @@ const Chat = {
   _autoLifeActive: false,
   _autoLifePaused: false,
   _autoLifeEpoch: 0,     // incremented on pause/stop to invalidate in-flight ticks
+  _autoLifeLastSpoke: {}, // { memberId: timestamp } — cooldown tracking
+  _autoLifeSpeakChance: 0.18, // 18% chance per tick to even consider speaking
+  _autoLifeCooldown: 10 * 60 * 1000, // 10 min cooldown after speaking
 
   autoLifeStart() {
     if (!App.localMode && !App.useLocal) return;  // cloud only — never auto-life
@@ -1343,14 +1346,14 @@ const Chat = {
     if (!this._autoLifeActive || this._autoLifePaused) return;
     if (this.forwardIds.indexOf(memberId) === -1) return;
     var self = this;
-    // Random delay: 30 seconds to 20 minutes
-    var minDelay = 30 * 1000;
+    // Random delay: 3 minutes to 20 minutes
+    var minDelay = 3 * 60 * 1000;
     var maxDelay = 20 * 60 * 1000;
     var member = App.state.team.find(function(m) { return m.id === memberId; });
     // Chatty personalities skew shorter
     var chatty = ['enthusiastic', 'creative', 'chaotically', 'big-picture'];
     var isChatty = member && chatty.some(function(w) { return member.personality.indexOf(w) !== -1; });
-    if (isChatty) maxDelay = 12 * 60 * 1000;  // chatty: up to 12 min
+    if (isChatty) maxDelay = 15 * 60 * 1000;  // chatty: up to 15 min
     var delay = minDelay + Math.random() * (maxDelay - minDelay);
     this._autoLifeTimers[memberId] = setTimeout(function() {
       delete self._autoLifeTimers[memberId];
@@ -1458,6 +1461,9 @@ const Chat = {
         return;
       }
 
+      // Record that this character spoke (for cooldown)
+      this._autoLifeLastSpoke[memberId] = Date.now();
+
       // Add to shared history
       var replyMsg = { role: 'assistant', content: reply, speakerId: memberId, speakerName: member.name };
       this.sharedHistory.push(replyMsg);
@@ -1490,7 +1496,7 @@ const Chat = {
         if (id === memberId) return;
         if (self._autoLifeTimers[id]) clearTimeout(self._autoLifeTimers[id]);
         delete self._autoLifeTimers[id];
-        var reactDelay = 10000 + Math.random() * (5 * 60 * 1000 - 10000);
+        var reactDelay = 2 * 60 * 1000 + Math.random() * (6 * 60 * 1000);
         self._autoLifeTimers[id] = setTimeout(function() {
           delete self._autoLifeTimers[id];
           self._autoLifeTick(id);
