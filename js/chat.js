@@ -192,7 +192,8 @@ const Chat = {
     this.forwardIds.forEach(function(id) {
       var member = App.state.team.find(function(m) { return m.id === id; });
       if (!member) return;
-      var pal = PALETTES[member.colorIdx % PALETTES.length];
+      var roleType = detectRoleType(member.role || '');
+      var pal = Object.assign(getRoleColors(roleType, member.colorIdx || 0), { roleType: roleType });
       var isActive  = self.talkingIds.indexOf(id) !== -1;
       var isListening = !isActive;
 
