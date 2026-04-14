@@ -1,6 +1,7 @@
 // js/roster.js — Team roster drawer
 // Collapsible panel showing all team members as pixel-face tiles.
-// Green dot = on stage, grey = parked. Click to toggle. Hover for name + role.
+// Gold border = speaking, green dot = listening, grey = off stage.
+// Click to toggle on/off stage (and speaking). Hand-raise = wants to join.
 
 const Roster = (function() {
 
@@ -8,20 +9,15 @@ const Roster = (function() {
   var _drawer = null;
   var _grid   = null;
 
-  // ── Init ────────────────────────────────────────────────────────────────
   function init() {
     _drawer = document.getElementById('roster-drawer');
     _grid   = document.getElementById('roster-grid');
     if (!_drawer || !_grid) return;
-
-    // Toggle button
     var btn = document.getElementById('roster-toggle');
     if (btn) btn.addEventListener('click', toggle);
-
     render();
   }
 
-  // ── Open / close ────────────────────────────────────────────────────────
   function toggle() {
     _open = !_open;
     if (_drawer) _drawer.classList.toggle('open', _open);
@@ -33,7 +29,6 @@ const Roster = (function() {
   function open()  { _open = false; toggle(); }
   function close() { if (_open) toggle(); }
 
-  // ── Render all tiles ─────────────────────────────────────────────────────
   function render() {
     if (!_grid) return;
     _grid.innerHTML = '';
@@ -41,13 +36,14 @@ const Roster = (function() {
     var team = (App && App.state && App.state.team) ? App.state.team : [];
 
     team.forEach(function(member) {
-      var isOnStage = Chat && Chat.forwardIds && Chat.forwardIds.indexOf(member.id) !== -1;
+      var isOnStage    = Chat && Chat.forwardIds && Chat.forwardIds.indexOf(member.id) !== -1;
+      var isSpeaking   = Chat && Chat.talkingIds && Chat.talkingIds.indexOf(member.id) !== -1;
       var isHandRaised = Chat && Chat.handRaisedIds && Chat.handRaisedIds.indexOf(member.id) !== -1;
-      var tile = _makeTile(member, isOnStage, isHandRaised);
+      var tile = _makeTile(member, isOnStage, isSpeaking, isHandRaised);
       _grid.appendChild(tile);
     });
 
-    // ADD slot at end
+    // ADD slot
     var addSlot = document.createElement('div');
     addSlot.className = 'roster-tile roster-add';
     addSlot.title = 'Add team member';
@@ -59,13 +55,14 @@ const Roster = (function() {
     _grid.appendChild(addSlot);
   }
 
-  // ── Build one tile ────────────────────────────────────────────────────────
-  function _makeTile(member, isOnStage, isHandRaised) {
+  function _makeTile(member, isOnStage, isSpeaking, isHandRaised) {
     var tile = document.createElement('div');
-    tile.className = 'roster-tile' + (isOnStage ? ' on-stage' : '');
+    tile.className = 'roster-tile';
+    if (isOnStage) tile.classList.add('on-stage');
+    if (isSpeaking) tile.classList.add('speaking');
     tile.dataset.id = member.id;
 
-    // Pixel face canvas — 32×40 rendered at 2× internal scale
+    // Pixel face canvas
     var canvas = document.createElement('canvas');
     canvas.width  = 48;
     canvas.height = 60;
@@ -84,16 +81,21 @@ const Roster = (function() {
     nameEl.textContent = member.name.split(' ')[0].substring(0, 8);
     tile.appendChild(nameEl);
 
-    // Status dot
+    // Status dot — gold if speaking, green if listening on stage, grey if off
     var dot = document.createElement('div');
-    dot.className = 'roster-dot' + (isOnStage ? ' active' : '');
+    dot.className = 'roster-dot';
+    if (isSpeaking) {
+      dot.classList.add('speaking');
+    } else if (isOnStage) {
+      dot.classList.add('active');
+    }
     tile.appendChild(dot);
 
-    // Hand raise indicator — pulsing ✋ badge on tile
+    // Hand raise badge
     if (isHandRaised) {
       var handBadge = document.createElement('div');
       handBadge.className = 'roster-hand';
-      handBadge.textContent = '✋';
+      handBadge.textContent = '\u270b';
       tile.appendChild(handBadge);
       tile.classList.add('hand-raised');
     }
@@ -102,16 +104,36 @@ const Roster = (function() {
     var tip = document.createElement('div');
     tip.className = 'roster-tip';
     var role = member.role || 'team member';
-    var action = isHandRaised ? 'wants to speak — click to summon' : isOnStage ? 'click to park' : 'click to summon';
+    var state = isHandRaised ? 'wants to speak \u2014 click to let them in'
+              : isSpeaking ? 'speaking \u2014 click to remove'
+              : isOnStage ? 'listening \u2014 click to remove'
+              : 'off stage \u2014 click to add';
     tip.innerHTML =
       '<strong>' + _esc(member.name) + '</strong>' +
       '<span>' + _esc(role) + '</span>' +
-      '<em>' + action + '</em>';
+      '<em>' + state + '</em>';
     tile.appendChild(tip);
 
-    // Click: toggle on/off stage (roster is the only gate for this)
+    // Click handler
     tile.addEventListener('click', function() {
-      World.toggleStage(member.id);
+      if (isHandRaised) {
+        // Accept hand raise — add to speaking
+        Chat.handRaisedIds = Chat.handRaisedIds.filter(function(x) { return x !== member.id; });
+        delete Chat.handRaisedIntents[member.id];
+        if (Chat.forwardIds.indexOf(member.id) === -1) Chat.forwardIds.push(member.id);
+        if (Chat.talkingIds.indexOf(member.id) === -1) Chat.talkingIds.push(member.id);
+        Chat.talkingId = Chat.talkingIds[0];
+        Chat.openPanel();
+        Chat.renderPanel();
+        // Let them speak now
+        var respondMember = App.state.team.find(function(m) { return m.id === member.id; });
+        if (respondMember) Chat._getResponse(respondMember);
+      } else {
+        // Normal toggle on/off stage
+        World.toggleStage(member.id);
+      }
+      World.refresh();
+      Roster.render();
     });
 
     return tile;
@@ -121,7 +143,6 @@ const Roster = (function() {
     return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
 
-  // ── Public ────────────────────────────────────────────────────────────────
   return { init: init, render: render, toggle: toggle };
 
 })();
