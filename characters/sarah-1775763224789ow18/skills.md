@@ -1,7 +1,7 @@
 # Sarah — Skills & Expertise
 
 ## Primary Skills
-<!-- Core competencies for their role as Secretary -->
+<!-- Core competencies for their role as Secratary -->
 
 ## Secondary Skills
 <!-- Additional abilities and knowledge areas -->
