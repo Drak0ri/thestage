@@ -307,73 +307,16 @@ const App = {
     var r = member.role || 'Team Member';
     var n = member.name;
     var templates = {
-      'soul.md': '# ' + n + ' — Soul
-
-## Identity
-- **Name:** ' + n + '
-- **Role:** ' + r + '
-
-## Personality
-<!-- Core personality traits, values, communication style -->
-
-## Values
-<!-- What matters most to this person -->
-
-## Communication Style
-<!-- How they talk, what phrases they use, their tone -->',
-      'st_mem.md': '# ' + n + ' — Short-Term Memory
-
-<!-- Updated automatically after each conversation. Contains recent context. -->
-<!-- Rolled into long-term memory periodically. -->
-
-## Current Focus
-<!-- What are they working on right now? -->
-
-## Recent Conversations
-<!-- Last few interactions, key points -->
-
-## Open Threads
-<!-- Unresolved questions, pending tasks, things to follow up on -->',
-      'lt_mem.md': '# ' + n + ' — Long-Term Memory
-
-<!-- Persistent knowledge accumulated over time. Rarely changes. -->
-
-## Key Decisions
-<!-- Important decisions made, with context -->
-
-## Lessons Learned
-<!-- Insights gained from experience -->
-
-## Important Facts
-<!-- Things worth remembering permanently -->',
-      'skills.md': '# ' + n + ' — Skills & Expertise
-
-## Primary Skills
-<!-- Core competencies for their role as ' + r + ' -->
-
-## Secondary Skills
-<!-- Additional abilities and knowledge areas -->
-
-## Tools & Methods
-<!-- Preferred tools, frameworks, approaches -->',
-      'goals.md': '# ' + n + ' — Goals & Tasks
-
-## Active Goals
-<!-- Current objectives they're working toward -->
-
-## Completed
-<!-- Recently achieved goals -->',
-      'relationships.md': '# ' + n + ' — Relationships
-
-## Team Dynamics
-<!-- How they interact with each specific team member -->
-
-## Notes
-<!-- Observations about team relationships -->'
+      'soul.md': '# ' + n + ' \u2014 Soul\n\n## Identity\n- **Name:** ' + n + '\n- **Role:** ' + r + '\n\n## Personality\n<!-- Core personality traits, values, communication style -->\n\n## Values\n<!-- What matters most to this person -->\n\n## Communication Style\n<!-- How they talk, what phrases they use, their tone -->',
+      'st_mem.md': '# ' + n + ' \u2014 Short-Term Memory\n\n<!-- Updated automatically after each conversation. Contains recent context. -->\n<!-- Rolled into long-term memory periodically. -->\n\n## Current Focus\n<!-- What are they working on right now? -->\n\n## Recent Conversations\n<!-- Last few interactions, key points -->\n\n## Open Threads\n<!-- Unresolved questions, pending tasks, things to follow up on -->',
+      'lt_mem.md': '# ' + n + ' \u2014 Long-Term Memory\n\n<!-- Persistent knowledge accumulated over time. Rarely changes. -->\n\n## Key Decisions\n<!-- Important decisions made, with context -->\n\n## Lessons Learned\n<!-- Insights gained from experience -->\n\n## Important Facts\n<!-- Things worth remembering permanently -->',
+      'skills.md': '# ' + n + ' \u2014 Skills & Expertise\n\n## Primary Skills\n<!-- Core competencies for their role as ' + r + ' -->\n\n## Secondary Skills\n<!-- Additional abilities and knowledge areas -->\n\n## Tools & Methods\n<!-- Preferred tools, frameworks, approaches -->',
+      'goals.md': '# ' + n + ' \u2014 Goals & Tasks\n\n## Active Goals\n<!-- Current objectives they\'re working toward -->\n\n## Completed\n<!-- Recently achieved goals -->',
+      'relationships.md': '# ' + n + ' \u2014 Relationships\n\n## Team Dynamics\n<!-- How they interact with each specific team member -->\n\n## Notes\n<!-- Observations about team relationships -->'
     };
     var pin = App.pin;
     if (pin === 'local') pin = sessionStorage.getItem('stage_pin') || '';
-    if (!pin) return; // Can't write without PIN
+    if (!pin) return;
     var relayUrl = (typeof RELAY_URL !== 'undefined') ? RELAY_URL : 'https://script.google.com/macros/s/AKfycbxUtte8plGg9O0pPXeedpm9oKhXBndYHOMYRBWxhbHM26ZChBcbhnzBiv7x_zJPVGRq/exec';
     var slug = member.name.toLowerCase() + '-' + member.id;
     var files = Object.keys(templates);
