@@ -732,23 +732,27 @@ const World = {
   toggleStage(id) {
     var idx = Chat.forwardIds.indexOf(id);
     if (idx !== -1) {
+      // Remove from stage AND from speaking
       Chat.forwardIds.splice(idx, 1);
+      Chat.talkingIds = Chat.talkingIds.filter(function(x){ return x !== id; });
       Chat.handRaisedIds = Chat.handRaisedIds.filter(function(x){ return x !== id; });
-      if (Chat.talkingId === id) {
-        Chat.talkingId = Chat.forwardIds.length ? Chat.forwardIds[0] : null;
-      }
+      Chat.talkingId = Chat.talkingIds.length ? Chat.talkingIds[0] : (Chat.forwardIds.length ? Chat.forwardIds[0] : null);
       if (!Chat.forwardIds.length) Chat.closePanel();
       else Chat.renderPanel();
     } else {
+      // Add to stage AND make them a speaker
       Chat.forwardIds.push(id);
+      Chat.talkingIds.push(id);
       if (!Chat.talkingId) Chat.talkingId = id;
       Chat.openPanel();
     }
     Chat._saveStage();
     World.render();
-    App.setStatus(Chat.forwardIds.length
-      ? Chat.forwardIds.length + ' on stage'
-      : 'stage is empty — use TEAM to summon someone');
+    var speakCount = Chat.talkingIds.length;
+    var listenCount = Chat.forwardIds.length - speakCount;
+    var status = speakCount + ' speaking';
+    if (listenCount > 0) status += ', ' + listenCount + ' listening';
+    App.setStatus(Chat.forwardIds.length ? status : 'stage is empty — use TEAM to summon someone');
     if (typeof Roster !== 'undefined') Roster.render();
   },
 
