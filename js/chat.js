@@ -1288,6 +1288,7 @@ const Chat = {
   _autoLifeTimers: {},   // { memberId: timeoutHandle }
   _autoLifeActive: false,
   _autoLifePaused: false,
+  _autoLifeEpoch: 0,     // incremented on pause/stop to invalidate in-flight ticks
 
   autoLifeStart() {
     if (!App.localMode && !App.useLocal) return;  // cloud only — never auto-life
@@ -1302,6 +1303,7 @@ const Chat = {
   autoLifeStop() {
     this._autoLifeActive = false;
     this._autoLifePaused = false;
+    this._autoLifeEpoch++;
     var self = this;
     Object.keys(this._autoLifeTimers).forEach(function(id) {
       clearTimeout(self._autoLifeTimers[id]);
@@ -1317,6 +1319,7 @@ const Chat = {
       this._autoLifeScheduleAll();
     } else {
       this._autoLifePaused = true;
+      this._autoLifeEpoch++;
       var self = this;
       Object.keys(this._autoLifeTimers).forEach(function(id) {
         clearTimeout(self._autoLifeTimers[id]);
@@ -1357,6 +1360,7 @@ const Chat = {
 
   async _autoLifeTick(memberId) {
     if (!this._autoLifeActive || this._autoLifePaused) return;
+    var epoch = this._autoLifeEpoch;
     if (this.forwardIds.indexOf(memberId) === -1) return;
     if (!(App.localMode || App.useLocal)) { this.autoLifeStop(); return; }
 
@@ -1424,6 +1428,9 @@ const Chat = {
       var data = await resp.json();
       var rawReply = data.message ? data.message.content : '[SILENT]';
 
+      // Re-check pause — user may have paused while we were waiting for Ollama
+      if (!this._autoLifeActive || this._autoLifePaused || this._autoLifeEpoch !== epoch) return;
+
       // Check for silence
       if (rawReply.trim() === '[SILENT]' || rawReply.trim().indexOf('[SILENT]') !== -1) {
         // They chose silence — reschedule
@@ -1475,6 +1482,8 @@ const Chat = {
       this._debouncedCloudSave();
 
       // After someone speaks, give others a chance to respond sooner
+      // But only if still active and not paused
+      if (!this._autoLifeActive || this._autoLifePaused) return;
       // Reset their timers with a shorter window (10s - 5min)
       var self = this;
       this.forwardIds.forEach(function(id) {
@@ -1492,8 +1501,10 @@ const Chat = {
       console.warn('Auto-life tick failed for', member.name, e);
     }
 
-    // Reschedule this character
-    this._autoLifeScheduleOne(memberId);
+    // Reschedule this character (only if still active)
+    if (this._autoLifeActive && !this._autoLifePaused) {
+      this._autoLifeScheduleOne(memberId);
+    }
   },
 
   _updateAutoLifeIndicator() {
