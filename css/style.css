@@ -723,3 +723,32 @@ body {
   border-radius: 4px;
 }
 
+/* Idle countdown bar — shows time until auto-life kicks in */
+#idle-countdown-bar {
+  height: 14px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 3px;
+  margin: 0 8px 4px 8px;
+  position: relative;
+  overflow: hidden;
+}
+#idle-countdown-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #44cc66 0%, #88ee88 100%);
+  border-radius: 3px;
+  transition: width 1s linear;
+}
+#idle-countdown-label {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 5px;
+  color: rgba(255,255,255,0.6);
+  letter-spacing: 1px;
+  pointer-events: none;
+}
+
