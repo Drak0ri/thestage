@@ -335,6 +335,7 @@ const Chat = {
     if (!text) return;
     this.inputEl.value = '';
     this._lastUserInputTime = Date.now(); // track idle for auto-life 2-min rule
+    if (this._autoLifeActive) this._startIdleCountdown(); // reset countdown bar
 
     // ── Slash commands ──────────────────────────────────────────────────────
     if (text.startsWith('/')) {
@@ -1700,6 +1701,58 @@ const Chat = {
   _autoLifeCooldown: 10 * 60 * 1000, // 10 min cooldown after speaking
   _lastUserInputTime: 0, // timestamp of last user message — used for 2-min idle rule
   _autoLifeIdleThreshold: 2 * 60 * 1000, // 2 minutes of no user input triggers auto-life
+  _idleCountdownInterval: null, // interval handle for the countdown bar
+
+  _startIdleCountdown() {
+    this._stopIdleCountdown();
+    var bar = document.getElementById('idle-countdown-bar');
+    if (!bar) return;
+    if (!this._autoLifeActive || this._autoLifePaused) { bar.style.display = 'none'; return; }
+    if (!(App.localMode || App.useLocal)) { bar.style.display = 'none'; return; }
+    if (this.forwardIds.length < 2) { bar.style.display = 'none'; return; }
+    bar.style.display = '';
+    var self = this;
+    this._idleCountdownInterval = setInterval(function() { self._updateIdleCountdown(); }, 1000);
+    this._updateIdleCountdown();
+  },
+
+  _stopIdleCountdown() {
+    if (this._idleCountdownInterval) {
+      clearInterval(this._idleCountdownInterval);
+      this._idleCountdownInterval = null;
+    }
+    var bar = document.getElementById('idle-countdown-bar');
+    if (bar) bar.style.display = 'none';
+  },
+
+  _updateIdleCountdown() {
+    var bar = document.getElementById('idle-countdown-bar');
+    var fill = document.getElementById('idle-countdown-fill');
+    var label = document.getElementById('idle-countdown-label');
+    if (!bar || !fill || !label) return;
+    if (!this._autoLifeActive || this._autoLifePaused || !(App.localMode || App.useLocal) || this.forwardIds.length < 2) {
+      bar.style.display = 'none';
+      return;
+    }
+    var elapsed = Date.now() - (this._lastUserInputTime || 0);
+    var threshold = this._autoLifeIdleThreshold;
+    if (!this._lastUserInputTime || elapsed >= threshold) {
+      // Already idle — bar full, show "ALIVE" label
+      fill.style.width = '100%';
+      fill.style.background = 'linear-gradient(90deg, #44cc66 0%, #88ee88 100%)';
+      label.textContent = '\u{1F7E2} ALIVE';
+      return;
+    }
+    var pct = Math.min(100, (elapsed / threshold) * 100);
+    fill.style.width = pct + '%';
+    fill.style.background = pct < 50
+      ? 'linear-gradient(90deg, #666 0%, #888 100%)'
+      : 'linear-gradient(90deg, #44cc66 0%, #88ee88 100%)';
+    var remaining = Math.ceil((threshold - elapsed) / 1000);
+    var m = Math.floor(remaining / 60);
+    var s = remaining % 60;
+    label.textContent = 'idle ' + m + ':' + (s < 10 ? '0' : '') + s + ' until alive';
+  },
 
   autoLifeStart() {
     if (!App.localMode && !App.useLocal) return;  // cloud only — never auto-life
@@ -1709,6 +1762,7 @@ const Chat = {
     this._autoLifePaused = false;
     this._autoLifeScheduleAll();
     this._updateAutoLifeIndicator();
+    this._startIdleCountdown();
   },
 
   autoLifeStop() {
@@ -1721,6 +1775,7 @@ const Chat = {
     });
     this._autoLifeTimers = {};
     this._updateAutoLifeIndicator();
+    this._stopIdleCountdown();
   },
 
   autoLifeTogglePause() {
@@ -1728,6 +1783,7 @@ const Chat = {
     if (this._autoLifePaused) {
       this._autoLifePaused = false;
       this._autoLifeScheduleAll();
+      this._startIdleCountdown();
     } else {
       this._autoLifePaused = true;
       this._autoLifeEpoch++;
@@ -1736,6 +1792,7 @@ const Chat = {
         clearTimeout(self._autoLifeTimers[id]);
       });
       this._autoLifeTimers = {};
+      this._stopIdleCountdown();
     }
     this._updateAutoLifeIndicator();
   },
