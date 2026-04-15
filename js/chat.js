@@ -334,6 +334,7 @@ const Chat = {
     var text = this.inputEl.value.trim();
     if (!text) return;
     this.inputEl.value = '';
+    this._lastUserInputTime = Date.now(); // track idle for auto-life 2-min rule
 
     // ── Slash commands ──────────────────────────────────────────────────────
     if (text.startsWith('/')) {
@@ -1694,11 +1695,11 @@ const Chat = {
   _autoLifeActive: false,
   _autoLifePaused: false,
   _autoLifeEpoch: 0,     // incremented on pause/stop to invalidate in-flight ticks
-  _autoLifeLastSpoke: {}, // { memberId: timestamp }
-  _autoLifeSpeakChance: 0.15, // 15% chance per tick to even consider speaking
   _autoLifeLastSpoke: {}, // { memberId: timestamp } — cooldown tracking
   _autoLifeSpeakChance: 0.18, // 18% chance per tick to even consider speaking
   _autoLifeCooldown: 10 * 60 * 1000, // 10 min cooldown after speaking
+  _lastUserInputTime: 0, // timestamp of last user message — used for 2-min idle rule
+  _autoLifeIdleThreshold: 2 * 60 * 1000, // 2 minutes of no user input triggers auto-life
 
   autoLifeStart() {
     if (!App.localMode && !App.useLocal) return;  // cloud only — never auto-life
@@ -1753,15 +1754,28 @@ const Chat = {
     if (!this._autoLifeActive || this._autoLifePaused) return;
     if (this.forwardIds.indexOf(memberId) === -1) return;
     var self = this;
-    // Random delay: 3 minutes to 20 minutes
-    var minDelay = 3 * 60 * 1000;
-    var maxDelay = 20 * 60 * 1000;
-    var member = App.state.team.find(function(m) { return m.id === memberId; });
-    // Chatty personalities skew shorter
-    var chatty = ['enthusiastic', 'creative', 'chaotically', 'big-picture'];
-    var isChatty = member && chatty.some(function(w) { return member.personality.indexOf(w) !== -1; });
-    if (isChatty) maxDelay = 15 * 60 * 1000;  // chatty: up to 15 min
-    var delay = minDelay + Math.random() * (maxDelay - minDelay);
+
+    // 2-MINUTE IDLE RULE: characters only start talking after 2 min of no user input
+    var timeSinceInput = Date.now() - (this._lastUserInputTime || 0);
+    var idleThreshold = this._autoLifeIdleThreshold; // 2 min
+
+    var delay;
+    if (this._lastUserInputTime && timeSinceInput < idleThreshold) {
+      // User was recently active — schedule to fire shortly after the 2-min idle mark
+      var timeUntilIdle = idleThreshold - timeSinceInput;
+      // Add 5–30s jitter after the threshold so they don't all fire at once
+      delay = timeUntilIdle + 5000 + Math.random() * 25000;
+    } else {
+      // Already idle ≥2 min (or no user input yet) — use normal random delays
+      var minDelay = 10 * 1000;   // 10s
+      var maxDelay = 5 * 60 * 1000; // 5 min
+      var member = App.state.team.find(function(m) { return m.id === memberId; });
+      var chatty = ['enthusiastic', 'creative', 'chaotically', 'big-picture'];
+      var isChatty = member && chatty.some(function(w) { return member.personality.indexOf(w) !== -1; });
+      if (isChatty) maxDelay = 3 * 60 * 1000;  // chatty: up to 3 min
+      delay = minDelay + Math.random() * (maxDelay - minDelay);
+    }
+
     this._autoLifeTimers[memberId] = setTimeout(function() {
       delete self._autoLifeTimers[memberId];
       self._autoLifeTick(memberId);
@@ -1773,6 +1787,13 @@ const Chat = {
     var epoch = this._autoLifeEpoch;
     if (this.forwardIds.indexOf(memberId) === -1) return;
     if (!(App.localMode || App.useLocal)) { this.autoLifeStop(); return; }
+
+    // 2-min idle gate: if user sent a message less than 2 min ago, reschedule
+    var timeSinceInput = Date.now() - (this._lastUserInputTime || 0);
+    if (this._lastUserInputTime && timeSinceInput < this._autoLifeIdleThreshold) {
+      this._autoLifeScheduleOne(memberId);
+      return;
+    }
 
     var member = App.state.team.find(function(m) { return m.id === memberId; });
     if (!member) return;
