@@ -1,5 +1,5 @@
 // js/world.js — procedural pixel-art character rendering
-// v2.13 — CharRenderer replaces LPC spritesheets
+// v2.16 — optional EnhancedCharRenderer for members with .enhanced flag
 
 const IDLE_PX         = 1.8;
 const ACTIVE_PX       = 2.2;
@@ -454,15 +454,23 @@ const World = {
       }
       var wx = isTalking ? newBase : World.wanderState[member.id].x;
 
-      // Canvas
+      // Canvas — size depends on whether enhanced renderer is active.
+      // Enhanced needs extra pixels around the sprite for jump/tilt/squash.
+      var useEnhanced = !!(member.enhanced && typeof EnhancedCharRenderer !== 'undefined');
+      var pad = useEnhanced ? EnhancedCharRenderer.PAD : 0;
       var c = document.createElement('canvas');
       c.id     = 'canvas-' + member.id;
-      c.width  = CHAR_W;
-      c.height = CHAR_H;
-      c.style.cssText = 'width:'+displayW+'px;height:'+displayH+'px;image-rendering:pixelated;display:block;';
+      c.width  = CHAR_W + pad * 2;
+      c.height = CHAR_H + pad * 2;
+      // CSS size scaled proportionally so visual sprite size stays consistent
+      var cssW = displayW * (CHAR_W + pad * 2) / CHAR_W;
+      var cssH = displayH * (CHAR_H + pad * 2) / CHAR_H;
+      c.style.cssText = 'width:'+cssW+'px;height:'+cssH+'px;image-rendering:pixelated;display:block;' +
+                        (pad ? 'margin-left:' + (-pad * displayW / CHAR_W) + 'px;margin-top:' + (-pad * displayH / CHAR_H) + 'px;' : '');
 
-      // CharRenderer
-      var renderer = new CharRenderer(member, c);
+      // Choose renderer
+      var RendererClass = useEnhanced ? EnhancedCharRenderer : CharRenderer;
+      var renderer = new RendererClass(member, c);
       World.renderers[member.id] = renderer;
       renderer.still();
 
@@ -602,7 +610,10 @@ const World = {
     var W = World.container ? (World.container.getBoundingClientRect().width || World.container.offsetWidth || 700) : 700;
     var ws = World.wanderState[id];
     var base = ws ? ws.base : W / 2;
-    renderer.playOnce('action', function() {
+    // Enhanced renderer can use the specific action name; legacy uses generic 'action'
+    var isEnhanced = typeof EnhancedCharRenderer !== 'undefined' && renderer instanceof EnhancedCharRenderer;
+    var actionArg = (isEnhanced && actionName) ? actionName : 'action';
+    renderer.playOnce(actionArg, function() {
       if (Chat.forwardIds.indexOf(id) !== -1 && Chat.talkingId !== id) {
         World._startWander(id, renderer, base, W);
       } else {
