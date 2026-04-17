@@ -150,8 +150,94 @@ const App = {
     if (!val) return;
     App.pin = val;
     sessionStorage.setItem('stage_pin', val);
+    sessionStorage.setItem('stage_pin_ts', Date.now().toString());
     document.getElementById('pin-overlay').style.display = 'none';
-    App.init();
+    var note = document.getElementById('pin-expiry-note');
+    if (note) note.style.display = 'none';
+    // If any cloud calls were waiting for PIN re-entry, resume them all.
+    if (App._pinWaiters && App._pinWaiters.length) {
+      App._resumePinWaiters(val);
+    } else {
+      // First-time PIN entry after page load — kick off app init.
+      App.init();
+    }
+  },
+
+  // ── Cloud PIN expiry ────────────────────────────────────────────────────────
+  // Cloud mode requires a PIN. The PIN expires every 5 minutes so the user is
+  // periodically reminded (and must explicitly re-confirm) that cloud is in use.
+  //
+  //   await App.getCloudPin()   → returns fresh pin, or null if user cancels.
+  //                               If stale, shows overlay and waits for re-entry.
+  //   App.isCloudPinFresh()     → sync true/false. Background tasks use this to
+  //                               silently skip rather than interrupt the user.
+  //
+  // Local-mode calls should NOT use either — they use App.pin === 'local' marker.
+  PIN_MAX_AGE_MS: 5 * 60 * 1000,
+
+  isCloudPinFresh() {
+    var pin = App.pin;
+    if (pin === 'local') pin = sessionStorage.getItem('stage_pin') || '';
+    var ts = parseInt(sessionStorage.getItem('stage_pin_ts') || '0', 10);
+    return !!(pin && ts && (Date.now() - ts) < App.PIN_MAX_AGE_MS);
+  },
+
+  // Queue of promises waiting for PIN re-entry. Multiple concurrent cloud calls
+  // during a stale-PIN window all resolve off the same next submitPin.
+  _pinWaiters: [],
+
+  getCloudPin() {
+    return new Promise(function(resolve) {
+      if (App.isCloudPinFresh()) {
+        var pin = App.pin;
+        if (pin === 'local') pin = sessionStorage.getItem('stage_pin') || '';
+        return resolve(pin);
+      }
+      // Stale — clear state, queue, show overlay
+      sessionStorage.removeItem('stage_pin');
+      sessionStorage.removeItem('stage_pin_ts');
+      if (App.pin !== 'local') App.pin = null;
+      App._pinWaiters.push(resolve);
+      App._showPinExpiredOverlay();
+    });
+  },
+
+  _showPinExpiredOverlay() {
+    var overlay = document.getElementById('pin-overlay');
+    if (!overlay) {
+      // No overlay — fallback to native prompt (also resumes all waiters at once)
+      var entered = prompt('PIN expired. Re-enter PIN to continue using cloud:');
+      if (entered) {
+        App.pin = entered;
+        sessionStorage.setItem('stage_pin', entered);
+        sessionStorage.setItem('stage_pin_ts', Date.now().toString());
+      }
+      App._resumePinWaiters(entered || null);
+      return;
+    }
+    overlay.style.display = 'flex';
+    // Inject expiry notice so user understands why overlay appeared
+    var note = document.getElementById('pin-expiry-note');
+    if (!note) {
+      note = document.createElement('div');
+      note.id = 'pin-expiry-note';
+      note.style.cssText = "font-family:'Press Start 2P',monospace;font-size:7px;color:#ffaa44;text-align:center;max-width:240px;line-height:1.7;";
+      // Insert near the top of the overlay, after the title & subtitle blocks
+      var children = overlay.children;
+      var insertBefore = children.length > 2 ? children[2] : null;
+      if (insertBefore) overlay.insertBefore(note, insertBefore);
+      else overlay.appendChild(note);
+    }
+    note.textContent = 'PIN expired — cloud mode requires re-entry every 5 minutes';
+    note.style.display = 'block';
+    var input = document.getElementById('pin-input');
+    if (input) { input.value = ''; setTimeout(function(){ input.focus(); }, 50); }
+  },
+
+  _resumePinWaiters(pin) {
+    var waiters = App._pinWaiters;
+    App._pinWaiters = [];
+    waiters.forEach(function(resolve) { resolve(pin); });
   },
 
   state: { team: [], chatHistory: {} },
@@ -379,10 +465,20 @@ document.addEventListener('DOMContentLoaded', () => {
     App.init();
     return;
   }
-  // PIN check — try sessionStorage first so reload doesn't re-prompt
+  // PIN check — try sessionStorage first so reload doesn't re-prompt,
+  // but only if the stored PIN is still fresh (<5 min old).
   var saved = sessionStorage.getItem('stage_pin');
-  if (saved) { App.pin = saved; App.init(); }
-  else { document.getElementById('pin-overlay').style.display = 'flex'; }
+  var savedTs = parseInt(sessionStorage.getItem('stage_pin_ts') || '0', 10);
+  var savedAge = Date.now() - savedTs;
+  if (saved && savedTs && savedAge < (5 * 60 * 1000)) {
+    App.pin = saved;
+    App.init();
+  } else {
+    // Clear any stale PIN data and force re-entry
+    sessionStorage.removeItem('stage_pin');
+    sessionStorage.removeItem('stage_pin_ts');
+    document.getElementById('pin-overlay').style.display = 'flex';
+  }
 });
 
 
