@@ -1,5 +1,5 @@
 // js/animation.js — enhanced character animation layer
-// v2.14 — smooth interpolated motion, breathing, blinking, squash/stretch, shadow
+// v2.17 — adds facing=side for walking (humans only)
 // Drop-in replacement for CharRenderer. Activated per-member via member.enhanced = true.
 // Falls back gracefully if drawPixelChar is missing.
 
@@ -310,6 +310,7 @@
     this.canvas = canvas;
     this.ctx    = canvas.getContext('2d');
     this._flip  = false;
+    this._facing = 'front';  // 'front' | 'side' — humans turn for walk cycle
     this._anim  = 'idle';
     this._rafId = null;
     this._startTs = performance.now();
@@ -444,7 +445,7 @@
     sctx.clearRect(0, 0, CHAR_W, CHAR_H);
 
     if (typeof drawPixelChar === 'function') {
-      drawPixelChar(sctx, this._pal, Math.round(pose), { flip: this._flip, roleType: this._roleType });
+      drawPixelChar(sctx, this._pal, Math.round(pose), { flip: this._flip, roleType: this._roleType, facing: this._facing });
     }
 
     // Blinking overlay — paint a 2px dark line across eyes area
@@ -490,16 +491,30 @@
   // ── Public API (matches CharRenderer) ─────────────────────────────────────
   EnhancedCharRenderer.prototype.still = function() {
     this._anim = 'idle';
+    this._facing = 'front';
+    this._flip = false;
     this._oneshotProfile = null;
     this._onDone = null;
     this._startTs = performance.now();
   };
 
   EnhancedCharRenderer.prototype.switchAnim = function(animName, flip) {
-    if (flip !== undefined) this._flip = !!flip;
     // Map legacy anim names
     if (animName === 'action') animName = 'jump';
     if (!PROFILES[animName]) animName = 'idle';
+    // Side-facing only while walking; all other anims face front
+    var willFaceSide = (animName === 'walk');
+    this._facing = willFaceSide ? 'side' : 'front';
+    if (willFaceSide) {
+      // caller passes flip=true when walking LEFT (so legacy front-view would mirror).
+      // _drawHumanSide is drawn facing LEFT by default, so:
+      //   moving left  (flip=true) → keep unflipped (still faces left)
+      //   moving right (flip=false) → flip horizontally to face right
+      this._flip = !flip;
+    } else {
+      // Front view — ignore flip (sprite is symmetrical)
+      this._flip = false;
+    }
     this._anim = animName;
     this._oneshotProfile = null;
     this._startTs = performance.now();
