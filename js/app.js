@@ -169,6 +169,12 @@ const App = {
     if (this.state.stageTalkingId === undefined) this.state.stageTalkingId = null;
     if (!this.state.artifacts)      this.state.artifacts      = [];
     if (!this.state.props)          this.state.props          = [];
+    // Migrate: flag any existing "Claude" member for the enhanced renderer
+    this.state.team.forEach(function(m) {
+      if (m && typeof m.name === 'string' && m.name.trim().toLowerCase() === 'claude' && !m.enhanced) {
+        m.enhanced = true;
+      }
+    });
     // Migrate any flat chatHistory arrays to two-layer format {summary,recent}
     Object.keys(this.state.chatHistory).forEach(function(id) {
       var h = App.state.chatHistory[id];
@@ -308,6 +314,10 @@ const App = {
       colorIdx: this.state.team.length,
       personality: PERSONALITIES[this.state.team.length % PERSONALITIES.length]
     };
+    // Enhanced animation layer — currently opt-in for "Claude" only
+    if (typeof name === 'string' && name.trim().toLowerCase() === 'claude') {
+      member.enhanced = true;
+    }
     this.state.team.push(member);
     Storage.cloudSave(this.state);
     World.render();
