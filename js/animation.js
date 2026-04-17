@@ -1,5 +1,5 @@
 // js/animation.js — enhanced character animation layer
-// v2.18 — fix feet-on-floor (asymmetric pad), remove scale-breathing shimmer, integer translate
+// v2.19 — remove idle/talk bob entirely (pixel-art clicks unnaturally at 1px)
 // Drop-in replacement for CharRenderer. Activated per-member via member.enhanced = true.
 // Falls back gracefully if drawPixelChar is missing.
 
@@ -21,16 +21,12 @@
   // apply sub-pixel transforms, timing curves, and overlays on top.
   var PROFILES = {
     idle: {
-      duration: 4000,          // full loop ms
-      poseFor: function(t){
-        return 0;
-      },
-      bobY: function(t){
-        // Very subtle breathing — rounded to integer pixels to avoid shimmer.
-        // Raw sine gives -0.6 to +0.6; Math.round gives 0 most of the time, ±1 at peaks.
-        return Math.round(Math.sin(t * Math.PI * 2) * 0.6);
-      },
-      scaleY: function(t){ return 1; },   // no scale-based breathing — causes sub-pixel shimmer
+      duration: 5000,
+      poseFor: function(t){ return 0; },
+      // No bob at idle — pixel art bobbing by 1px clicks unnaturally, and
+      // sub-pixel bobs cause shimmer. Stillness + blinks reads best.
+      bobY: function(t){ return 0; },
+      scaleY: function(t){ return 1; },
       scaleX: function(t){ return 1; },
       shadowScale: function(t){ return 1; },
     },
@@ -63,12 +59,9 @@
     talk: {
       duration: 2200,
       poseFor: function(t){
-        // subtle lean in & out — pose 3 is the lean
         return (t < 0.55) ? 3 : 0;
       },
-      bobY: function(t){
-        return Math.round(Math.sin(t * Math.PI * 2) * 0.8);
-      },
+      bobY: function(t){ return 0; },   // same reason as idle
       scaleY: function(t){ return 1; },
       scaleX: function(t){ return 1; },
       shadowScale: function(t){ return 1; },
