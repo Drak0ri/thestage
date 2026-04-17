@@ -1,5 +1,5 @@
 // js/chars.js — pixel-art character rendering
-// v2.14 — pure fillRect pixel art, no arcs/ellipses
+// v2.17 — human side-profile (_drawHumanSide) for walking animation
 // Internal canvas: 48×72px
 
 const PERSONALITIES = [
@@ -210,10 +210,14 @@ function drawPixelChar(ctx, palOrObj, frame, opts) {
   var isAnimal = roleType && roleType.startsWith('animal_');
   var isRobot  = roleType === 'robot';
   var isAlien  = roleType === 'alien';
+  var wantsSide = (opts.facing === 'side');
+  // Only humans currently support true side-view. Others fall back to front + flip.
+  var canSide = wantsSide && !isAnimal && !isRobot && !isAlien;
   ctx.clearRect(0, 0, W, H);
   ctx.save();
   if (opts.flip) { ctx.scale(-1,1); ctx.translate(-W,0); }
-  if      (isAnimal) _drawAnimal(ctx, W, H, pose, pal, roleType);
+  if      (canSide)  _drawHumanSide(ctx, W, H, pose, pal, roleType);
+  else if (isAnimal) _drawAnimal(ctx, W, H, pose, pal, roleType);
   else if (isRobot)  _drawRobot(ctx, W, H, pose, pal);
   else if (isAlien)  _drawAlien(ctx, W, H, pose, pal);
   else               _drawHuman(ctx, W, H, pose, pal, roleType);
@@ -313,6 +317,268 @@ function _drawHuman(ctx, W, H, pose, pal, roleType) {
 
   // Held item on action
   if (pose===4) _drawHeldItem(ctx, cx, bodyX, bodyY, bodyW, armY, pal, roleType);
+}
+
+// ── Human side profile (facing LEFT; caller flips for right) ──────────────────
+// Same overall proportions as front view so the character reads as the "same person".
+//   Head 18×18 → silhouette: forehead curve, nose bump on left, back-of-head mass on right
+//   Body 12w × 22h → narrower silhouette (only thickness visible, not shoulder span)
+//   Arms: front arm prominent on left, back arm peeks from right
+//   Legs: 6w each, clear front/back in walk cycle
+function _drawHumanSide(ctx, W, H, pose, pal, roleType) {
+  var cx = W >> 1; // 24 — vertical centerline of character
+
+  // Walk cycle offsets — amplified so steps read clearly at pixel scale.
+  //   Front leg / front arm sit on the LEFT (facing-left side).
+  //   flX = front-leg x offset; blX = back-leg x offset
+  //   faY = front-arm vertical swing; baY = back-arm vertical swing
+  var flX=0, blX=0, faY=0, baY=0, flY=0, blY=0, bob=0;
+  var faX=0, baX=0;
+  if (pose===1) {
+    // Front leg forward (further left), back leg trailing
+    flX=-4; blX=3;
+    // Opposite arms swing
+    faY=-2; baY=2;
+    faX=1;  baX=-1;
+    flY=0;  blY=-1;    // back foot slightly lifted
+    bob=1;
+  }
+  if (pose===2) {
+    // Mirror: front leg back, back leg forward
+    flX=3;  blX=-4;
+    faY=2;  baY=-2;
+    faX=-1; baX=1;
+    flY=-1; blY=0;
+    bob=1;
+  }
+  if (pose===3) bob=-1;                      // talk-lean
+  if (pose===4) { faY=-9; faX=-2; bob=-1; }  // action — front arm raised
+
+  var groundY = H - 2 + bob;
+
+  // ─── Shoes (profile: one elongated shoe per leg, toe pointing left) ────
+  // Back shoe first (behind)
+  p(ctx, cx-2+blX,  groundY-3+blY, 9, 3, pal.shoes);
+  p(ctx, cx-2+blX,  groundY-3+blY, 9, 1, '#ffffff22');
+  p(ctx, cx-3+blX,  groundY-2+blY, 1, 2, pal.shoes);    // toe
+  // Front shoe (in front — overlaps)
+  p(ctx, cx-6+flX,  groundY-3+flY, 11, 3, pal.shoes);
+  p(ctx, cx-6+flX,  groundY-3+flY, 11, 1, '#ffffff33');
+  p(ctx, cx-7+flX,  groundY-2+flY, 1, 2, pal.shoes);    // toe
+  // Heel nubs
+  p(ctx, cx+4+flX,  groundY-1+flY, 1, 1, '#00000055');
+  p(ctx, cx+6+blX,  groundY-1+blY, 1, 1, '#00000044');
+
+  // ─── Legs ──────────────────────────────────────────────────────────────
+  var legH = 18;
+  var legTop = groundY - 3 - legH;
+  // Back leg (drawn first, partially hidden by front leg)
+  p(ctx, cx+blX,    legTop+blY, 5, legH, pal.pants);
+  p(ctx, cx+blX,    legTop+blY, 5, 1, '#ffffff10');
+  p(ctx, cx+blX,    legTop+blY, 1, legH, '#00000044');   // shaded front edge of back leg
+  p(ctx, cx+blX,    legTop+blY, 5, 2, pal.shirt2);
+  // Front leg
+  p(ctx, cx-5+flX,  legTop+flY, 5, legH, pal.pants);
+  p(ctx, cx-5+flX,  legTop+flY, 5, 1, '#ffffff22');
+  p(ctx, cx-5+flX,  legTop+flY, 1, legH, '#ffffff18');   // leading edge highlight
+  p(ctx, cx-1+flX,  legTop+flY, 1, legH, '#00000033');   // trailing edge shadow
+  p(ctx, cx-5+flX,  legTop+flY, 5, 2, pal.shirt2);
+
+  // ─── Body (side silhouette — narrower than front) ──────────────────────
+  var bodyH = 22;
+  var bodyY = legTop - bodyH;
+  var bodyW = 12;
+  var bodyX = cx - 6;
+  p(ctx, bodyX, bodyY, bodyW, bodyH, pal.shirt);
+  // Shoulder cap — slight extra pixel at top
+  p(ctx, bodyX, bodyY, bodyW, 2, pal.shirt2);
+  p(ctx, bodyX-1, bodyY+1, 1, 2, pal.shirt2);            // front shoulder nub
+  // Front edge (facing left = leading edge on left)
+  p(ctx, bodyX, bodyY+2, 1, bodyH-3, '#ffffff18');
+  // Back edge shadow
+  p(ctx, bodyX+bodyW-1, bodyY+2, 1, bodyH-3, '#00000044');
+  // Bottom hem
+  p(ctx, bodyX, bodyY+bodyH-1, bodyW, 1, pal.shirt2);
+
+  // Role-specific body detail
+  _bodyDetailSide(ctx, cx, bodyX, bodyY, bodyW, bodyH, pal, roleType, pose);
+
+  // ─── Arms ──────────────────────────────────────────────────────────────
+  var armY = bodyY + 2;
+  var armH = 14;
+  var armW = 4;
+
+  // Back arm — drawn first (behind body on the RIGHT/back side)
+  // We add a small x-offset so it's not just a line on the body edge
+  var backArmX = bodyX + bodyW - 1 + baX;
+  p(ctx, backArmX, armY + baY, armW, armH, pal.shirt);
+  p(ctx, backArmX, armY + baY, 1, armH, '#00000044');      // shadow where arm meets body
+  p(ctx, backArmX + armW - 1, armY + baY, 1, armH, pal.shirt2);
+  // Back hand
+  p(ctx, backArmX, armY + baY + armH, armW, 4, pal.skin);
+  p(ctx, backArmX + armW - 1, armY + baY + armH, 1, 4, pal.skinS);
+
+  // Front arm — prominent on the LEFT (facing-left side)
+  if (pose === 4) {
+    // Raised arm — extends UP from shoulder, hand high near head
+    var raiseTop = armY + faY;  // faY is -9 here
+    p(ctx, bodyX - 3 + faX, raiseTop, armW, armH, pal.shirt);
+    p(ctx, bodyX - 3 + faX, raiseTop, 1, armH, '#ffffff20');
+    p(ctx, bodyX - 3 + faX + armW - 1, raiseTop, 1, armH, pal.shirt2);
+    // Hand at top
+    p(ctx, bodyX - 3 + faX, raiseTop - 4, armW, 4, pal.skin);
+    p(ctx, bodyX - 3 + faX, raiseTop - 4, 1, 4, pal.skinS);
+  } else {
+    var frontArmX = bodyX - 3 + faX;
+    p(ctx, frontArmX, armY + faY, armW, armH, pal.shirt);
+    // Clear leading-edge highlight so arm reads as a distinct shape
+    p(ctx, frontArmX, armY + faY, 1, armH, '#ffffff28');
+    // Trailing edge
+    p(ctx, frontArmX + armW - 1, armY + faY, 1, armH, pal.shirt2);
+    // Front hand
+    p(ctx, frontArmX, armY + faY + armH, armW, 4, pal.skin);
+    p(ctx, frontArmX, armY + faY + armH, 1, 4, pal.skin);
+    p(ctx, frontArmX, armY + faY + armH + 3, armW, 1, pal.skinS);
+  }
+
+  // ─── Neck ──────────────────────────────────────────────────────────────
+  // Shifted slightly forward (toward face side)
+  p(ctx, cx-3, bodyY-5, 5, 6, pal.skin);
+  p(ctx, cx-3, bodyY-5, 5, 1, pal.skinS);                // under-chin shadow
+  p(ctx, cx+1, bodyY-5, 1, 6, pal.skinS);                // back-of-neck shadow
+
+  // ─── Head silhouette (build up in layers for clean side profile) ──────
+  var headH = 18, headW = 18;
+  var headY = bodyY - headH - 1;
+  var headX = cx - headW/2 + 1;  // shift 1px right so nose has room to protrude
+
+  // Base head — slightly tapered rectangle
+  p(ctx, headX+1, headY,   headW-2, headH,   pal.skin);
+  p(ctx, headX,   headY+2, headW,   headH-4, pal.skin);
+
+  // Back-of-head bulge (skull curves outward)
+  p(ctx, headX + headW,     headY + 4, 1, headH - 8, pal.skin);
+  p(ctx, headX + headW,     headY + 4, 1, 1, pal.skinS);
+  p(ctx, headX + headW,     headY + headH - 5, 1, 1, pal.skinS);
+
+  // ── Nose — protruding wedge on LEFT side ──
+  // Structure: bridge → tip → nostril shadow. 2px protrusion for clarity.
+  var noseTop = headY + 6;
+  // Bridge (connects forehead to nose tip, 1 pixel out)
+  p(ctx, headX - 1, noseTop,     1, 1, pal.skin);
+  // Tip of nose — 2 pixels protruding
+  p(ctx, headX - 2, noseTop + 1, 2, 2, pal.skin);
+  // Under-nose shadow (separates nose from mouth area)
+  p(ctx, headX - 1, noseTop + 3, 1, 1, pal.skinS);
+  p(ctx, headX,     noseTop + 3, 1, 1, pal.skinS);
+  // Top-of-nose highlight
+  p(ctx, headX - 2, noseTop + 1, 1, 1, pal.skin);
+  // Nostril detail
+  p(ctx, headX - 1, noseTop + 2, 1, 1, pal.skinD || pal.skinS);
+
+  // ── Brow ridge ──
+  var browY = headY + 5;
+  p(ctx, headX, browY, 4, 1, pal.skinD || pal.skinS);
+  p(ctx, headX + 1, browY - 1, 3, 1, pal.skinS);  // brow highlight
+
+  // ── Eye (single visible eye, close to front) ──
+  var eyeX = headX + 1;
+  var eyeY = headY + 7;
+  p(ctx, eyeX, eyeY, 2, 2, '#1a0a00');
+  p(ctx, eyeX, eyeY, 1, 1, '#ffffff');           // catchlight
+
+  // ── Cheek shading ──
+  p(ctx, headX + 2, headY + 10, 2, 1, pal.skinS);
+  p(ctx, headX + 1, headY + 11, 1, 2, pal.skinS);
+
+  // ── Mouth ──
+  if (pose === 3 || pose === 4) {
+    // Open (talking)
+    p(ctx, headX, headY + 13, 4, 2, '#2a0808');
+    p(ctx, headX, headY + 13, 4, 1, '#6a2020');
+  } else {
+    p(ctx, headX, headY + 13, 4, 1, '#3a1a0a');
+  }
+
+  // ── Chin ──
+  p(ctx, headX + 1, headY + headH - 3, 3, 2, pal.skin);
+  p(ctx, headX,     headY + headH - 2, 1, 1, pal.skinS);
+  p(ctx, headX + 1, headY + headH - 1, 3, 1, pal.skinS);  // jaw underside
+
+  // ── Ear (on back half of head) ──
+  var earX = headX + headW - 4;
+  var earY = headY + 7;
+  p(ctx, earX,     earY,     2, 5, pal.skinS);
+  p(ctx, earX + 1, earY + 1, 1, 3, pal.skinD || pal.skinS);
+  p(ctx, earX - 1, earY + 2, 1, 2, pal.skinS);   // front-of-ear curve
+
+  // ─── Hair ─────────────────────────────────────────────────────────────
+  _drawHairSide(ctx, headX, headY, headW, headH, pal.hair, roleType);
+
+  // ─── Accessories (glasses etc.) ──────────────────────────────────────
+  _drawSideAccessory(ctx, headX, headY, headW, headH, pal, roleType, pose);
+}
+
+// Side-view hair — sweep back from forehead, covering top and back of head
+function _drawHairSide(ctx, hx, hy, hw, hh, hairColor, roleType) {
+  // Top cap — full width of head
+  p(ctx, hx + 1, hy - 1, hw - 2, 3, hairColor);
+  p(ctx, hx + 2, hy - 2, hw - 4, 1, hairColor);
+  // Front-top forehead hairline — slight forward sweep
+  p(ctx, hx,     hy + 1, 3, 2, hairColor);
+  p(ctx, hx - 1, hy + 1, 1, 2, hairColor);
+  // Back of head — hair mass extends down further
+  p(ctx, hx + hw - 4, hy + 2, 4, 6, hairColor);
+  p(ctx, hx + hw - 3, hy + 8, 3, 2, hairColor);
+  p(ctx, hx + hw - 2, hy + 10, 2, 1, hairColor);
+  // Sideburn hint (small patch in front of ear)
+  p(ctx, hx + hw - 5, hy + 7, 1, 2, hairColor);
+  // Highlight streak on top
+  p(ctx, hx + 3, hy - 1, hw - 8, 1, '#ffffff18');
+}
+
+// Side-view accessories — small glasses, positioned around the eye only
+function _drawSideAccessory(ctx, hx, hy, hw, hh, pal, roleType, pose) {
+  var r = (roleType || '').toLowerCase();
+  if (/scientist|professor|teacher|doctor/.test(r)) {
+    // Side-view glasses: one lens covering the eye, temple arm going back
+    var lensX = hx;
+    var lensY = hy + 6;
+    // Lens frame — 4px square around the eye
+    p(ctx, lensX,     lensY,     4, 1, '#444');       // top
+    p(ctx, lensX,     lensY + 3, 4, 1, '#444');       // bottom
+    p(ctx, lensX,     lensY + 1, 1, 2, '#444');       // front
+    p(ctx, lensX + 3, lensY + 1, 1, 2, '#444');       // back
+    // Lens glint
+    p(ctx, lensX + 1, lensY + 1, 1, 1, '#ffffff55');
+    // Temple arm going to ear
+    p(ctx, lensX + 4, lensY + 1, hw - 8, 1, '#444');
+  }
+}
+
+// Side-view body detail — ties, lab coats etc. (simplified for side view)
+function _bodyDetailSide(ctx, cx, bodyX, bodyY, bodyW, bodyH, pal, roleType, pose) {
+  var r = (roleType || '').toLowerCase();
+  // Tie — visible as thin vertical stripe toward front of body
+  if (/ceo|cto|lawyer|finance|manager/.test(r)) {
+    p(ctx, bodyX + 1, bodyY + 2, 2, bodyH - 6, pal.acc || '#333');
+    p(ctx, bodyX + 1, bodyY + 2, 2, 1, pal.acc2 || '#222');
+    // Tie knot
+    p(ctx, bodyX + 1, bodyY + 1, 2, 1, pal.acc2 || '#222');
+  }
+  // Lab coat / white coat — front panel
+  if (/doctor|scientist/.test(r)) {
+    p(ctx, bodyX, bodyY + 2, 3, bodyH - 3, '#ffffff');
+    p(ctx, bodyX, bodyY + 2, 1, bodyH - 3, '#cccccc');
+    // Button
+    p(ctx, bodyX + 1, bodyY + 8, 1, 1, '#666');
+    p(ctx, bodyX + 1, bodyY + 13, 1, 1, '#666');
+  }
+  // Pocket suggestion — subtle chest pocket
+  if (/developer|engineer|designer/.test(r)) {
+    p(ctx, bodyX + 2, bodyY + 9, 3, 3, pal.shirt2);
+    p(ctx, bodyX + 2, bodyY + 9, 3, 1, '#ffffff15');
+  }
 }
 
 function _drawHairPixel(ctx, hx, hy, hw, hairColor, style) {
