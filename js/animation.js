@@ -1,5 +1,5 @@
 // js/animation.js — enhanced character animation layer
-// v2.17 — adds facing=side for walking (humans only)
+// v2.18 — fix feet-on-floor (asymmetric pad), remove scale-breathing shimmer, integer translate
 // Drop-in replacement for CharRenderer. Activated per-member via member.enhanced = true.
 // Falls back gracefully if drawPixelChar is missing.
 
@@ -23,17 +23,14 @@
     idle: {
       duration: 4000,          // full loop ms
       poseFor: function(t){
-        // subtle shift to talk-lean occasionally? No — keep idle pure.
         return 0;
       },
       bobY: function(t){
-        // gentle breathing — 4s cycle, ±0.6px
-        return Math.sin(t * Math.PI * 2) * 0.6;
+        // Very subtle breathing — rounded to integer pixels to avoid shimmer.
+        // Raw sine gives -0.6 to +0.6; Math.round gives 0 most of the time, ±1 at peaks.
+        return Math.round(Math.sin(t * Math.PI * 2) * 0.6);
       },
-      scaleY: function(t){
-        // chest rise — tiny vertical expansion on inhale
-        return 1 + Math.sin(t * Math.PI * 2) * 0.008;
-      },
+      scaleY: function(t){ return 1; },   // no scale-based breathing — causes sub-pixel shimmer
       scaleX: function(t){ return 1; },
       shadowScale: function(t){ return 1; },
     },
@@ -70,11 +67,9 @@
         return (t < 0.55) ? 3 : 0;
       },
       bobY: function(t){
-        return Math.sin(t * Math.PI * 2) * 0.8;
+        return Math.round(Math.sin(t * Math.PI * 2) * 0.8);
       },
-      scaleY: function(t){
-        return 1 + Math.sin(t * Math.PI * 4) * 0.012;
-      },
+      scaleY: function(t){ return 1; },
       scaleX: function(t){ return 1; },
       shadowScale: function(t){ return 1; },
     },
@@ -334,12 +329,12 @@
     // using EnhancedCharRenderer (see EnhancedCharRenderer.PAD).
     this._pad = ENHANCED_PAD;
     // Defensive fallback: if caller gave us the default 48×72 canvas,
-    // silently grow it and scale CSS to match visual size.
+    // silently grow it (top+sides only, no bottom pad) and scale CSS.
     if (canvas.width === CHAR_W && canvas.height === CHAR_H) {
       var cssW = canvas.style.width  ? parseFloat(canvas.style.width)  : 0;
       var cssH = canvas.style.height ? parseFloat(canvas.style.height) : 0;
       canvas.width  = CHAR_W + this._pad * 2;
-      canvas.height = CHAR_H + this._pad * 2;
+      canvas.height = CHAR_H + this._pad;
       if (cssW && cssH) {
         canvas.style.width  = (cssW * canvas.width  / CHAR_W) + 'px';
         canvas.style.height = (cssH * canvas.height / CHAR_H) + 'px';
@@ -415,7 +410,9 @@
     // Translate to character origin (include padding + bob + offsetX)
     var cx = this._pad + CHAR_W / 2;
     var cy = this._pad + CHAR_H;
-    ctx.translate(cx + offsetX, cy + bobY);
+    // Round translation to integer pixels — critical for pixel art clarity.
+    // Any fractional offset causes anti-aliasing and produces a "fuzzy" look.
+    ctx.translate(Math.round(cx + offsetX), Math.round(cy + bobY));
 
     // Scale from feet (we already translated to foot center)
     ctx.scale(scaleX, scaleY);
