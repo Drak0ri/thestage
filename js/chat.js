@@ -740,10 +740,10 @@ const Chat = {
     for (var mi = messages.length - 1; mi >= 0; mi--) {
       if (messages[mi].role === 'user') { lastUserMsg = messages[mi].content.toLowerCase(); break; }
     }
-    var SONNET_TRIGGERS = ['widget', 'build', 'create a', 'make a', 'code', 'simulate', 'experiment',
-      'visuali', 'diagram', 'calculat', 'algorithm', 'teach me', 'explain how', 'step by step',
-      'function', 'script', 'program', 'html', 'javascript', 'css', 'game', 'animation', 'chart',
-      'remember', 'memory', 'write_mem', 'note down', 'save this', 'dont forget', 'store', 'onboarding', 'update_file'];
+    // Narrow trigger list — only real heavy engineering tasks promote to Sonnet.
+    // Everything else (recall, explanations, chat, casual requests) stays on Haiku.
+    var SONNET_TRIGGERS = ['build', 'code', 'widget', 'html', 'script', 'css',
+      'javascript', 'program', 'function', 'algorithm'];
     var needsSonnet = SONNET_TRIGGERS.some(function(t) { return lastUserMsg.indexOf(t) !== -1; });
 
     // Respect manual override from App._modelMode
@@ -829,10 +829,15 @@ const Chat = {
           }
         }
       } else {
+        var freshPin = await App.getCloudPin();
+        if (!freshPin) {
+          this.appendSystem('\u26a0\ufe0f PIN required for cloud mode \u2014 message cancelled.');
+          return;
+        }
         var resp = await fetch('https://script.google.com/macros/s/AKfycbxUtte8plGg9O0pPXeedpm9oKhXBndYHOMYRBWxhbHM26ZChBcbhnzBiv7x_zJPVGRq/exec', {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify({ pin: App.pin, model: chosenModel, max_tokens: needsSonnet ? 4000 : 1500, system: system, messages: messages })
+          body: JSON.stringify({ pin: freshPin, model: chosenModel, max_tokens: needsSonnet ? 4000 : 1500, system: system, messages: messages })
         });
         var data = await resp.json();
         rawReply = data.content && data.content[0] ? data.content[0].text : '...';
@@ -1397,6 +1402,7 @@ const Chat = {
         var d = await resp.json();
         text = d.message ? d.message.content : '';
       } else {
+        if (!App.isCloudPinFresh()) return;   // bg task — don't interrupt with modal
         var resp = await fetch('https://script.google.com/macros/s/AKfycbxUtte8plGg9O0pPXeedpm9oKhXBndYHOMYRBWxhbHM26ZChBcbhnzBiv7x_zJPVGRq/exec', {
           method: 'POST', headers: { 'Content-Type': 'text/plain' },
           body: JSON.stringify({ pin: App.pin, model: 'claude-haiku-4-5-20251001', max_tokens: 60, system: 'Reply with a single short sentence only.', messages: [{ role: 'user', content: prompt }] })
@@ -1670,6 +1676,7 @@ const Chat = {
           var cd = await compactResp.json();
           if (cd.message && cd.message.content) newSummary = cd.message.content.trim();
         } else {
+          if (!App.isCloudPinFresh()) { console.warn('Compaction skipped for', id, '— cloud PIN stale'); continue; }
           compactResp = await fetch('https://script.google.com/macros/s/AKfycbxUtte8plGg9O0pPXeedpm9oKhXBndYHOMYRBWxhbHM26ZChBcbhnzBiv7x_zJPVGRq/exec', {
             method: 'POST', headers: { 'Content-Type': 'text/plain' },
             body: JSON.stringify({ pin: App.pin, model: 'claude-haiku-4-5-20251001', max_tokens: 300, system: summarySystem, messages: [{ role: 'user', content: transcript }] })
