@@ -1,5 +1,5 @@
 // js/world.js — procedural pixel-art character rendering
-// v2.16 — optional EnhancedCharRenderer for members with .enhanced flag
+// v2.18 — asymmetric canvas padding (top+sides only) so feet stay on floor
 
 const IDLE_PX         = 1.8;
 const ACTIVE_PX       = 2.2;
@@ -455,16 +455,17 @@ const World = {
       var wx = isTalking ? newBase : World.wanderState[member.id].x;
 
       // Canvas — size depends on whether enhanced renderer is active.
-      // Enhanced needs extra pixels around the sprite for jump/tilt/squash.
+      // Enhanced needs extra pixels ABOVE and beside the sprite for jump/tilt/squash.
+      // No bottom padding — character feet stay at wrapper bottom (floor).
       var useEnhanced = !!(member.enhanced && typeof EnhancedCharRenderer !== 'undefined');
       var pad = useEnhanced ? EnhancedCharRenderer.PAD : 0;
       var c = document.createElement('canvas');
       c.id     = 'canvas-' + member.id;
-      c.width  = CHAR_W + pad * 2;
-      c.height = CHAR_H + pad * 2;
+      c.width  = CHAR_W + pad * 2;          // left + right padding for sideways squash/tilt
+      c.height = CHAR_H + pad;              // top padding only (for jumps)
       // CSS size scaled proportionally so visual sprite size stays consistent
       var cssW = displayW * (CHAR_W + pad * 2) / CHAR_W;
-      var cssH = displayH * (CHAR_H + pad * 2) / CHAR_H;
+      var cssH = displayH * (CHAR_H + pad)     / CHAR_H;
       c.style.cssText = 'width:'+cssW+'px;height:'+cssH+'px;image-rendering:pixelated;display:block;' +
                         (pad ? 'margin-left:' + (-pad * displayW / CHAR_W) + 'px;margin-top:' + (-pad * displayH / CHAR_H) + 'px;' : '');
 
