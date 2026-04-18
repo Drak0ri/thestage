@@ -840,7 +840,14 @@ const Chat = {
           body: JSON.stringify({ pin: freshPin, model: chosenModel, max_tokens: needsSonnet ? 4000 : 1500, system: system, messages: messages })
         });
         var data = await resp.json();
-        rawReply = data.content && data.content[0] ? data.content[0].text : '...';
+        if (data.content && data.content[0]) {
+          rawReply = data.content[0].text;
+        } else {
+          console.error('[STAGE] Relay returned no content. Full response:', data);
+          var errDetail = data.error ? ('error: ' + data.error) : ('unexpected response: ' + JSON.stringify(data).substring(0, 200));
+          Chat.appendSystem('\u26a0\ufe0f Relay call failed \u2014 ' + errDetail);
+          rawReply = '...';
+        }
       }
 
       // ── Parse tags ─────────────────────────────────────────────────────────
